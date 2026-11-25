@@ -38,6 +38,8 @@
             display: none !important;
         }
     </style>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#090d16">
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
 
@@ -49,7 +51,7 @@
             </div>
             <div class="min-w-0">
                 <h1 class="text-sm sm:text-base font-extrabold text-white truncate">الوسيط — تطبيق كابتن الاستلام</h1>
-                <p id="activeCaptainHeader" class="text-[11px] text-slate-400 truncate">اختر الكابتن لبدء البث</p>
+                <p id="activeCaptainHeader" class="text-[11px] text-slate-400 truncate">ثبّت حساب الكابتن لبدء البث</p>
             </div>
         </div>
 
@@ -65,19 +67,40 @@
 
     <main class="flex-1 max-w-xl w-full mx-auto p-4 space-y-4">
 
-        <!-- اختيار أو تغيير الكابتن -->
+        <!-- تثبيت حساب الكابتن لمرة واحدة -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div class="flex items-center justify-between">
-                <label for="captainSelect" class="text-xs font-extrabold text-emerald-400">
-                    <i class="fa-solid fa-user-check ml-1"></i>
-                    كابتن الاستلام المعتمد (14 كابتناً)
-                </label>
+                <span class="text-xs font-extrabold text-emerald-400">
+                    <i class="fa-solid fa-shield-halved ml-1"></i>
+                    حساب كابتن الاستلام المثبّت
+                </span>
                 <span id="wakeLockIndicator" class="text-[11px] text-slate-400">إبقاء الشاشة: تلقائي</span>
             </div>
 
-            <select id="captainSelect" onchange="onCaptainSelectionChange()" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none">
-                <!-- يتم تعبئتها تلقائياً -->
-            </select>
+            <!-- شاشة الاختيار والتثبيت لأول مرة فقط -->
+            <div id="setupAccountBox" class="space-y-2.5">
+                <p class="text-[11px] text-slate-400">
+                    اختر اسمك مرة واحدة فقط لتثبيته على هذا الجهاز. بعد التثبيت سيظهر حسابك فقط ولن يُسمح بتغييره من داخل الواجهة.
+                </p>
+                <select id="captainSelect" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none">
+                    <!-- يتم تعبئتها تلقائياً -->
+                </select>
+                <button id="lockCaptainBtn" onclick="confirmAndLockCaptain()" class="w-full py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>تثبيت حسابي بشكل دائم</span>
+                </button>
+            </div>
+
+            <!-- عرض الحساب المثبّت بعد القفل -->
+            <div id="lockedAccountBox" class="hidden bg-slate-950 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                    <span class="text-[10px] text-emerald-400 font-bold block">حساب مثبّت ومقفل</span>
+                    <div id="lockedCaptainNameText" class="text-sm font-black text-white truncate">—</div>
+                </div>
+                <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold shrink-0">
+                    <i class="fa-solid fa-lock ml-1"></i> مثبت
+                </span>
+            </div>
 
             <div class="grid grid-cols-2 gap-2 pt-1">
                 <button id="startStreamBtn" onclick="startLiveTracking()" class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-1.5">
@@ -90,6 +113,17 @@
                 </button>
             </div>
         </section>
+
+        <!-- تنبيه الاستخدام الطبيعي للهاتف -->
+        <div id="backgroundHintBanner" class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 text-xs text-amber-200 flex items-start gap-2.5">
+            <i class="fa-solid fa-circle-info text-amber-400 mt-0.5 shrink-0"></i>
+            <div>
+                <p class="font-bold text-amber-300">ملاحظة مهمة حول استخدام الهاتف أثناء البث:</p>
+                <p class="text-[11px] text-amber-100/90 mt-0.5 leading-relaxed">
+                    لأسباب أمان نظام الهاتف (أندرويد و iOS)، قد يجمّد المتصفح قراءة GPS في الخلفية إذا غادر الكابتن الصفحة أو أغلق الشاشة لفترة طويلة. يحدّث التطبيق موقع الكابتن فوراً وبشكل تلقائي بمجرد العودة أو التنقل بين التطبيقات، ويبقي آخر موقع موثّق ظاهراً على الخريطة.
+                </p>
+            </div>
+        </div>
 
         <!-- وضع تحديد الموقع والسرعة -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
@@ -150,7 +184,7 @@
             </div>
             <div id="miniMap"></div>
             <div id="logBox" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-[11px] text-slate-400 font-mono space-y-1 max-h-28 overflow-y-auto">
-                <div>جاهز لبدء البث المباشر للكابتن.</div>
+                <div>جاهز لتثبيت الحساب وبدء البث المباشر للكابتن.</div>
             </div>
         </section>
 
@@ -178,6 +212,8 @@
             { id: 14, name: "كابتن الاستلام قصي محمد", lat: 36.3855, lng: 43.1660, delivered: 21, remaining: 1 }
         ];
 
+        const LOCKED_CAPTAIN_KEY = 'waseet_locked_captain_id_v1';
+
         function resolveEndpoint() {
             if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.ENDPOINT) return APP_CONFIG.ENDPOINT;
             if (typeof CONFIG !== 'undefined' && CONFIG.ENDPOINT) return CONFIG.ENDPOINT;
@@ -203,19 +239,101 @@
         let miniMap = null;
         let miniMarker = null;
 
+        function getLockedCaptainFromUrl() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const rawCap = params.get('cap') || params.get('captain') || params.get('id');
+                if (!rawCap) return null;
+                const clean = decodeURIComponent(String(rawCap)).trim().toLowerCase();
+                return CAPTAINS_LIST.find(c =>
+                    String(c.id) === clean ||
+                    c.name.toLowerCase() === clean ||
+                    c.name.toLowerCase().includes(clean)
+                ) || null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function isCaptainLocked() {
+            const lockedId = localStorage.getItem(LOCKED_CAPTAIN_KEY);
+            return Boolean(lockedId && CAPTAINS_LIST.some(c => String(c.id) === String(lockedId)));
+        }
+
+        function syncAccountLockView() {
+            const setupBox = document.getElementById('setupAccountBox');
+            const lockedBox = document.getElementById('lockedAccountBox');
+            const lockedNameEl = document.getElementById('lockedCaptainNameText');
+            const startBtn = document.getElementById('startStreamBtn');
+
+            if (isCaptainLocked()) {
+                setupBox.classList.add('hidden');
+                lockedBox.classList.remove('hidden');
+                lockedNameEl.textContent = currentCaptain.name;
+                startBtn.disabled = false;
+                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                setupBox.classList.remove('hidden');
+                lockedBox.classList.add('hidden');
+                startBtn.disabled = true;
+                startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function confirmAndLockCaptain() {
+            if (isCaptainLocked()) return;
+            const select = document.getElementById('captainSelect');
+            const chosenId = select.value;
+            const chosen = CAPTAINS_LIST.find(c => String(c.id) === String(chosenId));
+            if (!chosen) return;
+
+            const ok = window.confirm(`هل أنت متأكد من تثبيت الحساب على: "${chosen.name}"؟ بعد التثبيت لن يُسمح بتغييره من داخل الواجهة.`);
+            if (!ok) return;
+
+            localStorage.setItem(LOCKED_CAPTAIN_KEY, String(chosen.id));
+            localStorage.setItem('waseet_selected_captain_id', String(chosen.id));
+            loadCaptainProfile(chosen.id);
+
+            if (miniMap && miniMarker) {
+                miniMarker.setLatLng([currentLat, currentLng]);
+                miniMap.setView([currentLat, currentLng], 14);
+            }
+
+            syncAccountLockView();
+            updateUI();
+            appendLog(`تم تثبيت الحساب بشكل دائم على: ${currentCaptain.name}`);
+            startLiveTracking();
+        }
+
         function initCaptainApp() {
             const select = document.getElementById('captainSelect');
             select.innerHTML = CAPTAINS_LIST.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
-            const savedId = localStorage.getItem('waseet_selected_captain_id');
-            const found = CAPTAINS_LIST.find(c => String(c.id) === String(savedId)) || CAPTAINS_LIST[0];
-            select.value = found.id;
-            loadCaptainProfile(found.id);
+            const urlCaptain = getLockedCaptainFromUrl();
+            const lockedId = localStorage.getItem(LOCKED_CAPTAIN_KEY);
+
+            if (urlCaptain) {
+                localStorage.setItem(LOCKED_CAPTAIN_KEY, String(urlCaptain.id));
+                localStorage.setItem('waseet_selected_captain_id', String(urlCaptain.id));
+                loadCaptainProfile(urlCaptain.id);
+            } else if (lockedId) {
+                const foundLocked = CAPTAINS_LIST.find(c => String(c.id) === String(lockedId));
+                loadCaptainProfile(foundLocked ? foundLocked.id : CAPTAINS_LIST[0].id);
+            } else {
+                loadCaptainProfile(CAPTAINS_LIST[0].id);
+                select.value = CAPTAINS_LIST[0].id;
+            }
 
             miniMap = L.map('miniMap', { center: [currentLat, currentLng], zoom: 14, zoomControl: false });
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMap);
             miniMarker = L.marker([currentLat, currentLng]).addTo(miniMap);
+            syncAccountLockView();
             updateUI();
+
+            if (urlCaptain && isCaptainLocked()) {
+                appendLog(`تم التثبيت تلقائياً عبر الرابط المخصص: ${currentCaptain.name}`);
+                startLiveTracking();
+            }
         }
 
         function loadCaptainProfile(id) {
@@ -236,17 +354,6 @@
             currentSpeed = Number(existing.speed ?? 0);
             currentStatus = existing.status || 'active';
             localStorage.setItem('waseet_selected_captain_id', String(base.id));
-        }
-
-        function onCaptainSelectionChange() {
-            const val = document.getElementById('captainSelect').value;
-            loadCaptainProfile(val);
-            if (miniMap && miniMarker) {
-                miniMarker.setLatLng([currentLat, currentLng]);
-                miniMap.setView([currentLat, currentLng], 14);
-            }
-            updateUI();
-            appendLog(`تم اختيار: ${currentCaptain.name}`);
         }
 
         function setMode(nextMode) {
@@ -299,6 +406,10 @@
         }
 
         async function startLiveTracking() {
+            if (!isCaptainLocked()) {
+                appendLog('يرجى تثبيت حساب الكابتن أولاً قبل بدء البث.');
+                return;
+            }
             stopLiveTracking(true);
             isStreaming = true;
             if (currentStatus === 'offline') currentStatus = 'active';
@@ -401,7 +512,7 @@
         }
 
         function updateUI() {
-            document.getElementById('activeCaptainHeader').textContent = currentCaptain.name;
+            document.getElementById('activeCaptainHeader').textContent = isCaptainLocked() ? currentCaptain.name : 'ثبّت حساب الكابتن لبدء البث';
             document.getElementById('remainingCount').textContent = currentCaptain.remaining;
             document.getElementById('deliveredCount').textContent = currentCaptain.delivered;
             document.getElementById('telemetrySummary').textContent = `السرعة: ${currentSpeed} كم/س • الدقة: ${currentAccuracy} م`;
@@ -424,6 +535,44 @@
             box.prepend(line);
             while (box.children.length > 20) box.removeChild(box.lastChild);
         }
+
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible') {
+                if (isStreaming) {
+                    await requestWakeLock();
+                    if (mode === 'gps' && 'geolocation' in navigator) {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                currentLat = pos.coords.latitude;
+                                currentLng = pos.coords.longitude;
+                                currentAccuracy = Math.round(pos.coords.accuracy || 10);
+                                const rawSpeedKmh = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+                                currentSpeed = currentStatus === 'active' ? rawSpeedKmh : 0;
+                                if (miniMarker && miniMap) {
+                                    miniMarker.setLatLng([currentLat, currentLng]);
+                                    miniMap.panTo([currentLat, currentLng]);
+                                }
+                                publishUpdate();
+                            },
+                            () => { publishUpdate(); },
+                            { enableHighAccuracy: true, maximumAge: 1000, timeout: 8000 }
+                        );
+                    } else {
+                        publishUpdate();
+                    }
+                    appendLog('تمت استعادة البث والتحديث الفوري للموقع');
+                }
+            } else if (isStreaming) {
+                publishUpdate();
+                appendLog('تم حفظ آخر إحداثيات قبل مغادرة الشاشة مؤقتاً');
+            }
+        });
+
+        setInterval(() => {
+            if (isStreaming && currentStatus !== 'offline') {
+                publishUpdate();
+            }
+        }, 12000);
 
         window.addEventListener('DOMContentLoaded', initCaptainApp);
     </script>
