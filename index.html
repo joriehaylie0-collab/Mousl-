@@ -1,209 +1,1079 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0f766e">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<title>تتبع المندوب</title>
-<style>
-  :root { --g:#16a34a; --r:#dc2626; }
-  * { box-sizing: border-box; }
-  body { margin:0 auto; max-width:480px; padding:16px; background:#f4f6f8; color:#111;
-         font-family: system-ui, "Segoe UI", Tahoma, sans-serif; }
-  h1 { font-size:20px; text-align:center; margin:8px 0 16px; }
-  select { width:100%; font-size:18px; padding:12px; border-radius:10px; border:1px solid #bbb; background:#fff; }
-  #toggle { width:100%; margin-top:16px; padding:24px; font-size:24px; font-weight:700;
-            border:0; border-radius:16px; color:#fff; background:var(--g); }
-  #toggle.on { background:var(--r); }
-  #state { text-align:center; font-size:20px; margin:16px 0 4px; font-weight:600; }
-  #wk { text-align:center; font-size:13px; color:#555; min-height:18px; }
-  #warn { background:#fef3c7; border-radius:10px; padding:10px; font-size:14px; margin-top:12px; }
-  .row { display:flex; gap:8px; align-items:center; margin-top:16px; }
-  .row label { flex:1; font-size:15px; }
-  #test { padding:10px 14px; font-size:15px; border-radius:10px; border:1px solid #888; background:#fff; }
-  #log { margin-top:16px; font:13px/1.7 ui-monospace, Consolas, monospace; direction:ltr; text-align:left; }
-  #log .ok { color:#166534; } #log .bad { color:#b91c1c; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تطبيق المندوب | الوسيط للتوصيل - الموصل</title>
+
+    <!-- خطوط عربية عصرية (Cairo) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- مكتبة الأيقونات Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- مكتبة الخرائط Leaflet.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#162032',
+                            900: '#0f172a',
+                            950: '#080c14',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #080c14;
+            color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+
+        #driverMap {
+            width: 100%;
+            height: 220px;
+            z-index: 10;
+            background-color: #0b1120;
+        }
+
+        @keyframes liveRadar {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+            }
+            70% {
+                box-shadow: 0 0 0 16px rgba(16, 185, 129, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .live-pulse-btn {
+            animation: liveRadar 2s infinite;
+        }
+
+        .driver-gps-dot {
+            width: 22px;
+            height: 22px;
+            background-color: #10b981;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.9);
+            position: relative;
+        }
+        .driver-gps-dot::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            right: -8px;
+            bottom: -8px;
+            border-radius: 50%;
+            border: 2px solid #10b981;
+            animation: dotPing 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        @keyframes dotPing {
+            75%, 100% {
+                transform: scale(1.8);
+                opacity: 0;
+            }
+        }
+
+        .leaflet-control-attribution {
+            display: none !important;
+        }
+    </style>
 </head>
-<body>
-<h1>📍 تتبع المندوب</h1>
+<body class="min-h-screen flex justify-center bg-slate-950">
 
-<select id="rep"></select>
-<button id="toggle">▶ تشغيل التتبع</button>
-<div id="state">⚪ التتبع متوقف</div>
-<div id="wk"></div>
+    <div class="w-full max-w-md bg-slate-900 min-h-screen flex flex-col border-x border-slate-800/80 shadow-2xl relative pb-20">
 
-<div id="warn">أبقِ التطبيق مفتوحاً في المقدمة والشاشة مضاءة (يمكن وضع الهاتف على الشاحن). المتصفحات توقف الموقع عند إغلاق الشاشة أو الخروج من التطبيق.</div>
+        <!-- الشريط العلوي للهاتف -->
+        <header class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3.5 sticky top-0 z-30 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-950/60">
+                    <i class="fa-solid fa-motorcycle text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-extrabold text-white leading-tight">الوسيط — تطبيق المندوب</h1>
+                    <p id="headerAreaSubtitle" class="text-xs text-slate-400">محافظة نينوى / الموصل</p>
+                </div>
+            </div>
 
-<div class="row">
-  <label><input type="checkbox" id="sim"> وضع المحاكاة (موقع تجريبي كل 5 ثوانٍ)</label>
-  <button id="test">اختبار الآن</button>
-</div>
+            <div id="topStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition-all">
+                <span id="topStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span id="topStatusText">غير متصل</span>
+            </div>
+        </header>
 
-<div id="log"></div>
+        <!-- 1. شاشة اختيار المندوب -->
+        <section id="loginScreen" class="p-5 flex-1 flex flex-col justify-center space-y-5">
+            <div class="text-center space-y-2">
+                <div class="w-16 h-16 rounded-3xl bg-sky-500/10 border border-sky-500/30 text-sky-400 flex items-center justify-center mx-auto text-2xl shadow-inner">
+                    <i class="fa-solid fa-id-card-clip"></i>
+                </div>
+                <h2 class="text-xl font-extrabold text-white">تسجيل دخول المندوب</h2>
+                <p class="text-xs text-slate-400 leading-relaxed">اختر اسمك من قائمة مناديب الوسيط في الموصل أو أدخل اسماً مخصصاً لبدء مشاركة موقعك المباشر</p>
+            </div>
 
-<script src="config.js"></script>
-<script>
-const $ = id => document.getElementById(id);
-const sel = $('rep');
-const S = { timer: null, running: false, wake: null, last: null, simPos: null };
+            <div class="bg-slate-850 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-lg">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5">
+                        <i class="fa-solid fa-users text-emerald-400 ml-1"></i> اختر المندوب المعتمد (17 مندوباً):
+                    </label>
+                    <select id="driverSelect" onchange="handleDriverSelectChange()" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-3 text-sm text-white font-semibold focus:outline-none transition">
+                        <option value="">-- اختر اسمك ومنطقتك في الموصل --</option>
+                    </select>
+                </div>
 
-const store = {
-  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-};
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-800"></div>
+                    <span class="flex-shrink mx-3 text-[11px] text-slate-500 font-bold">أو إدخال اسم جديد</span>
+                    <div class="flex-grow border-t border-slate-800"></div>
+                </div>
 
-sel.add(new Option('— اختر اسمك —', ''));
-CONFIG.REPS.forEach(r => sel.add(new Option(r.name, r.id)));
-sel.value = store.get('rep') || '';
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">اسم المندوب (مخصص):</label>
+                        <input type="text" id="customDriverName" placeholder="مثال: سيف الدين محمد" class="w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">المنطقة / الحي في الموصل:</label>
+                        <select id="customDriverArea" class="w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none transition">
+                            <option value="الجانب الأيسر - حي الزهور">الجانب الأيسر - حي الزهور</option>
+                            <option value="الجانب الأيسر - حي المثنى">الجانب الأيسر - حي المثنى</option>
+                            <option value="الجانب الأيمن - حي المنصور">الجانب الأيمن - حي المنصور</option>
+                            <option value="الجانب الأيمن - الدواسة">الجانب الأيمن - الدواسة</option>
+                            <option value="الجانب الأيسر - النبي يونس">الجانب الأيسر - النبي يونس</option>
+                            <option value="حمام العليل">حمام العليل</option>
+                            <option value="القيارة">القيارة</option>
+                            <option value="حي الكرامة">حي الكرامة</option>
+                            <option value="حي النور">حي النور</option>
+                            <option value="حي السكر">حي السكر</option>
+                            <option value="حي العربي">حي العربي</option>
+                            <option value="باب الطوب">باب الطوب</option>
+                            <option value="المجموعة الثقافية">المجموعة الثقافية</option>
+                            <option value="حي الانتصار">حي الانتصار</option>
+                            <option value="حي الصحة">حي الصحة</option>
+                            <option value="الجانب الأيمن">الجانب الأيمن</option>
+                            <option value="الجانب الأيسر">الجانب الأيسر</option>
+                        </select>
+                    </div>
+                </div>
 
-if (CONFIG.ENDPOINT.includes('PASTE_')) {
-  $('warn').textContent = '⚠️ لم يتم ضبط رابط الاستقبال في config.js بعد.';
-}
+                <button onclick="confirmDriverLogin()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-950/60 transition flex items-center justify-center gap-2 active:scale-[0.98]">
+                    <span>دخول وفتح لوحة المندوب</span>
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+            </div>
+        </section>
 
-function log(msg, bad) {
-  const d = document.createElement('div');
-  d.className = bad ? 'bad' : 'ok';
-  d.textContent = new Date().toLocaleTimeString('en-GB') + '  ' + msg;
-  const L = $('log'); L.prepend(d);
-  while (L.children.length > 8) L.lastChild.remove();
-}
+        <!-- 2. لوحة تحكم المندوب الرئيسية -->
+        <main id="dashboardScreen" class="hidden p-4 space-y-4 flex-1">
 
-function repName() {
-  const r = CONFIG.REPS.find(x => String(x.id) === sel.value);
-  return r ? r.name : ('مندوب ' + sel.value);
-}
+            <!-- بطاقة معلومات المندوب وزر التبديل -->
+            <div class="bg-slate-850 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between shadow-md">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center text-lg font-extrabold" id="driverAvatarLetter">
+                        م
+                    </div>
+                    <div>
+                        <h2 id="activeDriverName" class="text-sm font-extrabold text-white">--</h2>
+                        <p id="activeDriverArea" class="text-xs text-slate-400 mt-0.5"><i class="fa-solid fa-location-dot text-emerald-400 ml-1"></i>--</p>
+                    </div>
+                </div>
+                <button onclick="switchDriverAccount()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-300 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-repeat text-sky-400"></i>
+                    <span>تبديل</span>
+                </button>
+            </div>
 
-function ui() {
-  $('toggle').textContent = S.running ? '⏹ إيقاف التتبع' : '▶ تشغيل التتبع';
-  $('toggle').className = S.running ? 'on' : '';
-  $('state').textContent = S.running ? '🟢 التتبع يعمل' : '⚪ التتبع متوقف';
-  sel.disabled = S.running;
-}
+            <!-- تنبيه إبقاء الشاشة مفتوحة -->
+            <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-3.5 py-2.5 text-[11px] text-amber-200 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-mobile-screen text-amber-400 text-sm shrink-0"></i>
+                    <span>أبقِ الصفحة مفتوحة في المقدمة أثناء التتبع لضمان استمرار إرسال الموقع.</span>
+                </div>
+                <span id="wakeLockBadge" class="px-2 py-0.5 rounded-md bg-slate-900/80 text-slate-400 font-bold shrink-0">شاشة عادية</span>
+            </div>
 
-// ---------- الموقع ----------
-function geoErr(err) {
-  if (err.code === 1) return 'تم رفض صلاحية الموقع';
-  if (err.code === 2) return 'تعذر تحديد الموقع (فعّل GPS)';
-  return 'انتهت مهلة GPS';
-}
-function getPos() {
-  return new Promise((res, rej) => {
-    if (!navigator.geolocation) return rej({ code: 2 });
-    navigator.geolocation.getCurrentPosition(
-      p => res({ lat: p.coords.latitude, lng: p.coords.longitude,
-                 acc: p.coords.accuracy, speed: p.coords.speed }),
-      err => rej(err),
-      { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
-  });
-}
-function fakePos() {
-  const id = parseInt(sel.value, 10) || 1;
-  if (!S.simPos) {
-    S.simPos = {
-      lat: CONFIG.MAP_CENTER[0] + (((id * 37) % 80) - 40) / 1000,
-      lng: CONFIG.MAP_CENTER[1] + (((id * 53) % 80) - 40) / 1000
-    };
-  }
-  S.simPos.lat += (Math.random() - 0.5) * 0.0016;
-  S.simPos.lng += (Math.random() - 0.5) * 0.0016;
-  return { lat: S.simPos.lat, lng: S.simPos.lng, acc: 10, speed: Math.random() > 0.3 ? 5 : 0 };
-}
-function dist(a, b) {
-  const R = 6371000, t = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * t, dLng = (b.lng - a.lng) * t;
-  const h = Math.sin(dLat / 2) ** 2 +
-            Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-function statusOf(pos) {
-  let v = pos.speed;
-  const now = Date.now();
-  if ((v == null || isNaN(v)) && S.last) v = dist(S.last, pos) / ((now - S.last.t) / 1000);
-  S.last = { lat: pos.lat, lng: pos.lng, t: now };
-  return (v != null && v > 1) ? 'moving' : 'stopped';
-}
-async function battery() {
-  try { const b = await navigator.getBattery(); return Math.round(b.level * 100); }
-  catch (e) { return ''; }
-}
+            <!-- قسم اختيار وضع التتبع + زر البث المباشر الكبير -->
+            <div class="bg-slate-850 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-lg">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="block text-[11px] font-bold text-slate-400">مصدر تحديد الموقع:</span>
+                        <span id="backendStatusTag" class="text-[10px] font-bold text-emerald-400">متصل بـ Apps Script</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                        <button id="modeGpsBtn" onclick="setTrackingMode('gps')" class="py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-sky-600 text-white shadow">
+                            <i class="fa-solid fa-satellite"></i>
+                            <span>GPS الهاتف الحقيقي</span>
+                        </button>
+                        <button id="modeSimBtn" onclick="setTrackingMode('sim')" class="py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white">
+                            <i class="fa-solid fa-route"></i>
+                            <span>محاكاة الموصل (تجربة)</span>
+                        </button>
+                    </div>
+                </div>
 
-// ---------- الإرسال ----------
-async function send(pos, sim) {
-  const status = statusOf(pos);
-  const q = new URLSearchParams({
-    action: 'ping', key: CONFIG.KEY, id: sel.value, name: repName(),
-    lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), status,
-    acc: Math.round(pos.acc || 0), bat: await battery(),
-    sim: sim ? 1 : 0, t: Date.now()
-  });
-  const r = await fetch(CONFIG.ENDPOINT + '?' + q.toString(), { cache: 'no-store' });
-  const j = await r.json();
-  if (!j.ok) throw new Error(j.error || 'رفض الخادم');
-  log(`✓ أُرسل ${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)} [${status}]${sim ? ' (محاكاة)' : ''}`);
-}
+                <!-- زر البث الكبير -->
+                <button id="broadcastToggleBtn" onclick="toggleBroadcast()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-base shadow-xl transition-all flex items-center justify-center gap-3 active:scale-[0.98]">
+                    <i id="broadcastIcon" class="fa-solid fa-tower-broadcast text-xl"></i>
+                    <span id="broadcastBtnText">بدء البث المباشر للموقع</span>
+                </button>
 
-async function tick() {
-  try {
-    const sim = $('sim').checked;
-    await send(sim ? fakePos() : await getPos(), sim);
-  } catch (e) {
-    const msg = (e && e.code) ? geoErr(e) : (e.message || 'فشل الإرسال');
-    log('✗ ' + msg, true);
-    if (e && e.code === 1) stop();
-  }
-}
+                <!-- بيانات القياس الحية -->
+                <div class="grid grid-cols-3 gap-2 pt-1">
+                    <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl p-2.5 text-center">
+                        <span class="text-[10px] text-slate-400 block">السرعة</span>
+                        <span id="liveSpeed" class="text-sm font-extrabold text-sky-400 font-mono">0 <small class="text-[10px] font-cairo">كم/س</small></span>
+                    </div>
+                    <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl p-2.5 text-center">
+                        <span class="text-[10px] text-slate-400 block">دقة الإشارة</span>
+                        <span id="liveAccuracy" class="text-sm font-extrabold text-emerald-400 font-mono">-- <small class="text-[10px] font-cairo">متر</small></span>
+                    </div>
+                    <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl p-2.5 text-center">
+                        <span class="text-[10px] text-slate-400 block">الإحداثيات</span>
+                        <span id="liveCoordsShort" class="text-[11px] font-bold text-slate-200 font-mono">36.34, 43.13</span>
+                    </div>
+                </div>
+            </div>
 
-// ---------- التشغيل / الإيقاف ----------
-async function getWake() {
-  try {
-    if ('wakeLock' in navigator) {
-      S.wake = await navigator.wakeLock.request('screen');
-      S.wake.addEventListener('release', () => { S.wake = null; });
-      $('wk').textContent = '🔒 الشاشة ستبقى مضاءة أثناء التتبع';
-    } else {
-      $('wk').textContent = 'متصفحك لا يدعم إبقاء الشاشة مضاءة، عطّل قفل الشاشة يدوياً';
-    }
-  } catch (e) {}
-}
-function releaseWake() {
-  try { if (S.wake) S.wake.release(); } catch (e) {}
-  S.wake = null; $('wk').textContent = '';
-}
+            <!-- 3. أزرار تحديث حالة المندوب السريعة -->
+            <div class="bg-slate-850 border border-slate-800 rounded-2xl p-4 space-y-2.5 shadow-md">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-extrabold text-slate-300"><i class="fa-solid fa-signal text-amber-400 ml-1.5"></i>حالتك الحالية الآن:</h3>
+                    <span id="lastStatusTime" class="text-[10px] text-slate-500">لم يحدّث بعد</span>
+                </div>
 
-function schedule() {
-  clearInterval(S.timer);
-  const sec = $('sim').checked ? CONFIG.SIM_INTERVAL_SEC : CONFIG.INTERVAL_SEC;
-  S.timer = setInterval(tick, sec * 1000);
-}
-function start() {
-  if (!sel.value) return log('اختر اسمك أولاً', true);
-  store.set('rep', sel.value); store.set('on', '1');
-  S.running = true; S.last = null; ui();
-  getWake(); tick(); schedule();
-}
-function stop() {
-  clearInterval(S.timer); S.running = false;
-  store.set('on', '0'); releaseWake(); ui();
-}
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setDriverStatus('available')" data-status="available" class="status-choice-btn p-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 hover:bg-slate-800 text-right transition flex items-center gap-2.5">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span class="text-xs font-bold text-slate-200">متاح للتوصيل</span>
+                    </button>
 
-$('toggle').onclick = () => (S.running ? stop() : start());
-$('sim').onchange = () => { S.simPos = null; if (S.running) schedule(); };
-$('test').onclick = async () => {
-  if (!sel.value) return log('اختر اسمك أولاً', true);
-  try { await send(fakePos(), true); } catch (e) { log('✗ ' + (e.message || 'فشل'), true); }
-};
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && S.running) { getWake(); tick(); }
-});
+                    <button onclick="setDriverStatus('delivering')" data-status="delivering" class="status-choice-btn p-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 hover:bg-slate-800 text-right transition flex items-center gap-2.5">
+                        <span class="w-3 h-3 rounded-full bg-sky-500 shrink-0"></span>
+                        <span class="text-xs font-bold text-slate-200">في طريق التوصيل</span>
+                    </button>
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+                    <button onclick="setDriverStatus('stopped')" data-status="stopped" class="status-choice-btn p-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 hover:bg-slate-800 text-right transition flex items-center gap-2.5">
+                        <span class="w-3 h-3 rounded-full bg-amber-500 shrink-0"></span>
+                        <span class="text-xs font-bold text-slate-200">استراحة / متوقف</span>
+                    </button>
 
-// تشغيل تلقائي عند فتح التطبيق إذا كان يعمل سابقاً
-if (store.get('on') === '1' && sel.value) start();
-ui();
-</script>
+                    <button onclick="setDriverStatus('offline')" data-status="offline" class="status-choice-btn p-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 hover:bg-slate-800 text-right transition flex items-center gap-2.5">
+                        <span class="w-3 h-3 rounded-full bg-slate-500 shrink-0"></span>
+                        <span class="text-xs font-bold text-slate-400">انتهى الدوام</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. عداد إدارة الطلبات الحالية للمندوب -->
+            <div class="bg-slate-850 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-md">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-extrabold text-slate-300"><i class="fa-solid fa-box-open text-sky-400 ml-1.5"></i>إدارة طلبات اليوم</h3>
+                    <button onclick="resetOrdersCounter()" class="text-[11px] text-slate-500 hover:text-rose-400 transition">تصفير العداد</button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 text-center">
+                    <div class="bg-slate-950 border border-amber-500/25 rounded-xl p-3">
+                        <span class="text-[11px] text-amber-300/80 block">طلبات في عهدتك</span>
+                        <span id="ordersRemainingCount" class="text-2xl font-black text-amber-400">0</span>
+                    </div>
+                    <div class="bg-slate-950 border border-emerald-500/25 rounded-xl p-3">
+                        <span class="text-[11px] text-emerald-300/80 block">تم تسليمها اليوم</span>
+                        <span id="ordersDeliveredCount" class="text-2xl font-black text-emerald-400">0</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button onclick="addPickedOrder()" class="py-2.5 px-3 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 text-sky-300 text-xs font-extrabold transition flex items-center justify-center gap-1.5 active:scale-95">
+                        <i class="fa-solid fa-plus-circle"></i>
+                        <span>إضافة طلب مستلم</span>
+                    </button>
+                    <button onclick="markOrderDelivered()" class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold transition flex items-center justify-center gap-1.5 shadow-md active:scale-95">
+                        <i class="fa-solid fa-check-double"></i>
+                        <span>تسجيل طلب مُسلّم</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 5. الخريطة المصغرة ونسخ رسالة الموقع السريعة -->
+            <div class="bg-slate-850 border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+                <div class="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between">
+                    <span class="text-xs font-extrabold text-slate-300"><i class="fa-solid fa-map-location-dot text-emerald-400 ml-1.5"></i>موقعك المباشر على خريطة الموصل</span>
+                    <button onclick="recenterMiniMap()" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold">
+                        <i class="fa-solid fa-crosshairs ml-1"></i>تمركز
+                    </button>
+                </div>
+
+                <div id="driverMap"></div>
+
+                <div class="p-3 bg-slate-950/70 border-t border-slate-800">
+                    <button onclick="copyQuickLocationMessage()" class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-2 active:scale-[0.99]">
+                        <i class="fa-solid fa-copy text-sky-400"></i>
+                        <span>نسخ رسالة الموقع السريعة لإرسالها للمكتب</span>
+                    </button>
+                    <textarea id="hiddenCopyBuffer" class="sr-only" aria-hidden="true"></textarea>
+                </div>
+            </div>
+
+            <!-- سجل التحديثات الحي -->
+            <div class="bg-slate-850 border border-slate-800 rounded-2xl p-3.5 shadow-md">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs font-extrabold text-slate-300"><i class="fa-solid fa-clock-rotate-left text-slate-400 ml-1.5"></i>سجل التحديثات الحية</h3>
+                    <span id="broadcastCounterBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">0 إرسال</span>
+                </div>
+                <div id="activityLogList" class="space-y-1.5 max-h-36 overflow-y-auto text-[11px]">
+                    <div class="text-slate-500 text-center py-2">بانتظار بدء البث المباشر...</div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- صندوق الإشعارات العائم داخل شاشة الجوال -->
+        <div id="mobileToastContainer" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm flex flex-col gap-2 pointer-events-none"></div>
+    </div>
+
+    <!-- تحميل config.js الخاص بالنظام إن وُجد دون تعطيل الصفحة في حال فتحها محلياً -->
+    <script src="config.js" onerror="window.__MISSING_CONFIG__ = true;"></script>
+
+    <!-- مكتبة Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // ========================================================
+        // 0. إعدادات الربط مع Google Apps Script / config.js
+        // ========================================================
+        function resolveAppsScriptEndpoint() {
+            if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.ENDPOINT) return APP_CONFIG.ENDPOINT;
+            if (typeof CONFIG !== 'undefined' && CONFIG.ENDPOINT) return CONFIG.ENDPOINT;
+            if (typeof ENDPOINT !== 'undefined' && typeof ENDPOINT === 'string') return ENDPOINT;
+            if (window.ENDPOINT) return window.ENDPOINT;
+            return '';
+        }
+
+        const APPS_SCRIPT_URL = resolveAppsScriptEndpoint();
+
+        async function syncPayloadToBackend(payload) {
+            saveStateToStorage(payload);
+
+            if (!APPS_SCRIPT_URL) {
+                document.getElementById('backendStatusTag').textContent = 'تخزين محلي فقط (تحقق من config.js)';
+                document.getElementById('backendStatusTag').className = 'text-[10px] font-bold text-amber-400';
+                return { ok: true, mode: 'local' };
+            }
+
+            try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                document.getElementById('backendStatusTag').textContent = 'مرتبط بـ Apps Script';
+                document.getElementById('backendStatusTag').className = 'text-[10px] font-bold text-emerald-400';
+                return { ok: true, mode: 'remote' };
+            } catch (err) {
+                document.getElementById('backendStatusTag').textContent = 'خطأ اتصال مؤقت (محفوظ محلياً)';
+                document.getElementById('backendStatusTag').className = 'text-[10px] font-bold text-rose-400';
+                return { ok: false, error: err };
+            }
+        }
+
+        // ========================================================
+        // 1. قائمة المناديب الـ 17 المعتمدين في أحياء الموصل
+        // ========================================================
+        const APPROVED_DRIVERS = [
+            { id: 1, name: "أحمد محمود الجبوري", area: "الجانب الأيمن - حي العامل", lat: 36.3325, lng: 43.1120 },
+            { id: 2, name: "مصطفى طارق العبيدي", area: "الجانب الأيسر - حي المهندسين", lat: 36.3640, lng: 43.1580 },
+            { id: 3, name: "عمر خالد الحيالي", area: "المجموعة الثقافية", lat: 36.3785, lng: 43.1490 },
+            { id: 4, name: "زيدون وليد الطائي", area: "حي الزهور", lat: 36.3690, lng: 43.1820 },
+            { id: 5, name: "علي حسين الشمري", area: "حي المثنى", lat: 36.3575, lng: 43.1735 },
+            { id: 6, name: "ياسر سعدون الدليمي", area: "حي الانتصار", lat: 36.3340, lng: 43.2080 },
+            { id: 7, name: "مهند عبد الله النعيمي", area: "حي المنصور", lat: 36.3195, lng: 43.1280 },
+            { id: 8, name: "سرمد فاضل الحمداني", area: "الدواسة", lat: 36.3380, lng: 43.1365 },
+            { id: 9, name: "حذيفة قاسم السبعاوي", area: "النبي يونس", lat: 36.3485, lng: 43.1645 },
+            { id: 10, name: "بلال إبراهيم المولى", area: "حمام العليل", lat: 36.1580, lng: 43.2520 },
+            { id: 11, name: "عثمان عادل اللهيبي", area: "القيارة", lat: 35.8020, lng: 43.2890 },
+            { id: 12, name: "محمد نزار العكيدي", area: "حي الكرامة", lat: 36.3420, lng: 43.1960 },
+            { id: 13, name: "سيف الدين رائد البدراني", area: "حي النور", lat: 36.3510, lng: 43.1855 },
+            { id: 14, name: "عبد الرحمن سالم الراشد", area: "حي السكر", lat: 36.3855, lng: 43.1660 },
+            { id: 15, name: "إيهاب جاسم الكيكاني", area: "حي العربي", lat: 36.3940, lng: 43.1380 },
+            { id: 16, name: "طارق زياد المعماري", area: "باب الطوب", lat: 36.3415, lng: 43.1335 },
+            { id: 17, name: "مروان تحسين الزبيدي", area: "حي الصحة", lat: 36.3260, lng: 43.1195 }
+        ];
+
+        const AREA_COORDS = {
+            "الجانب الأيسر - حي الزهور": [36.3690, 43.1820],
+            "الجانب الأيسر - حي المثنى": [36.3575, 43.1735],
+            "الجانب الأيمن - حي المنصور": [36.3195, 43.1280],
+            "الجانب الأيمن - الدواسة": [36.3380, 43.1365],
+            "الجانب الأيسر - النبي يونس": [36.3485, 43.1645],
+            "حمام العليل": [36.1580, 43.2520],
+            "القيارة": [35.8020, 43.2890],
+            "حي الكرامة": [36.3420, 43.1960],
+            "حي النور": [36.3510, 43.1855],
+            "حي السكر": [36.3855, 43.1660],
+            "حي العربي": [36.3940, 43.1380],
+            "باب الطوب": [36.3415, 43.1335],
+            "المجموعة الثقافية": [36.3785, 43.1490],
+            "حي الانتصار": [36.3340, 43.2080],
+            "حي الصحة": [36.3260, 43.1195],
+            "الجانب الأيمن": [36.3350, 43.1250],
+            "الجانب الأيسر": [36.3600, 43.1650]
+        };
+
+        const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('waseet_mosul_live_sync') : null;
+
+        let driverState = {
+            id: null,
+            name: '',
+            area: '',
+            lat: 36.3489,
+            lng: 43.1577,
+            speed: 0,
+            accuracy: 12,
+            status: 'available',
+            remainingOrders: 0,
+            deliveredOrders: 0,
+            heading: Math.random() * Math.PI * 2,
+            trail: [],
+            lastUpdated: null
+        };
+
+        // الوضع الافتراضي GPS الحقيقي مع إمكانية التبديل للمحاكاة بضغطة واحدة
+        let trackingMode = 'gps';
+        let isBroadcasting = false;
+        let gpsWatchId = null;
+        let simIntervalId = null;
+        let broadcastCount = 0;
+        let wakeLockSentinel = null;
+
+        let miniMap = null;
+        let miniMarker = null;
+        let miniPolyline = null;
+
+        // ========================================================
+        // 2. إدارة إبقاء الشاشة مضاءة (Screen Wake Lock)
+        // ========================================================
+        async function requestScreenWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLockSentinel = await navigator.wakeLock.request('screen');
+                    updateWakeLockBadge(true);
+                    wakeLockSentinel.addEventListener('release', () => {
+                        updateWakeLockBadge(false);
+                    });
+                }
+            } catch (e) {
+                updateWakeLockBadge(false);
+            }
+        }
+
+        async function releaseScreenWakeLock() {
+            try {
+                if (wakeLockSentinel) {
+                    await wakeLockSentinel.release();
+                    wakeLockSentinel = null;
+                }
+            } catch (e) {
+                // تجاهل
+            }
+            updateWakeLockBadge(false);
+        }
+
+        function updateWakeLockBadge(active) {
+            const badge = document.getElementById('wakeLockBadge');
+            if (!badge) return;
+            if (active) {
+                badge.textContent = 'الشاشة مضاءة';
+                badge.className = 'px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold shrink-0';
+            } else {
+                badge.textContent = 'شاشة عادية';
+                badge.className = 'px-2 py-0.5 rounded-md bg-slate-900/80 text-slate-400 font-bold shrink-0';
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && isBroadcasting) {
+                requestScreenWakeLock();
+            }
+        });
+
+        // ========================================================
+        // 3. تهيئة قائمة الاختيار واستعادة البيانات المحفوظة
+        // ========================================================
+        function populateDriversDropdown() {
+            const select = document.getElementById('driverSelect');
+            APPROVED_DRIVERS.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.id;
+                option.textContent = `${d.id}. ${d.name} (${d.area})`;
+                select.appendChild(option);
+            });
+        }
+
+        function handleDriverSelectChange() {
+            const select = document.getElementById('driverSelect');
+            if (select.value) {
+                document.getElementById('customDriverName').value = '';
+            }
+        }
+
+        function confirmDriverLogin() {
+            const selectedId = document.getElementById('driverSelect').value;
+            const customName = document.getElementById('customDriverName').value.trim();
+            const customArea = document.getElementById('customDriverArea').value;
+
+            if (selectedId) {
+                const found = APPROVED_DRIVERS.find(d => d.id == selectedId);
+                if (found) {
+                    driverState.id = found.id;
+                    driverState.name = found.name;
+                    driverState.area = found.area;
+                    driverState.lat = found.lat;
+                    driverState.lng = found.lng;
+                }
+            } else if (customName.length >= 2) {
+                driverState.id = Date.now();
+                driverState.name = customName;
+                driverState.area = customArea;
+                const coords = AREA_COORDS[customArea] || [36.3489, 43.1577];
+                driverState.lat = coords[0];
+                driverState.lng = coords[1];
+            } else {
+                showMobileToast('يرجى اختيار اسمك من القائمة أو كتابة اسمك أولاً', 'warning');
+                return;
+            }
+
+            driverState.trail = [[driverState.lat, driverState.lng]];
+            driverState.status = 'available';
+            saveStateToStorage();
+            openDashboardScreen();
+            showMobileToast(`أهلاً بك يا ${driverState.name}`, 'success');
+        }
+
+        function switchDriverAccount() {
+            if (isBroadcasting) {
+                stopBroadcast();
+            }
+            localStorage.removeItem('waseet_active_driver_session');
+            document.getElementById('dashboardScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
+
+        function openDashboardScreen() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboardScreen').classList.remove('hidden');
+
+            document.getElementById('activeDriverName').textContent = driverState.name;
+            document.getElementById('activeDriverArea').innerHTML = `<i class="fa-solid fa-location-dot text-emerald-400 ml-1"></i>${driverState.area}`;
+            document.getElementById('headerAreaSubtitle').textContent = driverState.area;
+            document.getElementById('driverAvatarLetter').textContent = driverState.name.charAt(0);
+
+            updateTrackingModeButtonsUI();
+            updateOrdersUI();
+            updateStatusButtonsUI();
+            updateTelemetryUI();
+
+            setTimeout(() => {
+                initMiniMap();
+            }, 100);
+        }
+
+        // ========================================================
+        // 4. إدارة الخريطة المصغرة للمندوب (OpenStreetMap)
+        // ========================================================
+        function initMiniMap() {
+            if (!miniMap) {
+                miniMap = L.map('driverMap', {
+                    center: [driverState.lat, driverState.lng],
+                    zoom: 15,
+                    zoomControl: false
+                });
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(miniMap);
+
+                const dotIcon = L.divIcon({
+                    className: 'custom-gps-icon',
+                    html: '<div class="driver-gps-dot"></div>',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
+                });
+
+                miniMarker = L.marker([driverState.lat, driverState.lng], { icon: dotIcon }).addTo(miniMap);
+                miniPolyline = L.polyline(driverState.trail, {
+                    color: '#10b981',
+                    weight: 4,
+                    opacity: 0.9,
+                    dashArray: '6, 6'
+                }).addTo(miniMap);
+            } else {
+                miniMap.invalidateSize();
+                updateMiniMapPosition();
+            }
+        }
+
+        function updateMiniMapPosition() {
+            if (!miniMap || !miniMarker) return;
+            const pos = [driverState.lat, driverState.lng];
+            miniMarker.setLatLng(pos);
+            miniPolyline.setLatLngs(driverState.trail);
+            miniMap.panTo(pos, { animate: true, duration: 0.8 });
+        }
+
+        function recenterMiniMap() {
+            if (miniMap) {
+                miniMap.flyTo([driverState.lat, driverState.lng], 16);
+            }
+        }
+
+        // ========================================================
+        // 5. البث المباشر للموقع (GPS الحقيقي + المحاكاة الذكية)
+        // ========================================================
+        function updateTrackingModeButtonsUI() {
+            const gpsBtn = document.getElementById('modeGpsBtn');
+            const simBtn = document.getElementById('modeSimBtn');
+
+            if (trackingMode === 'gps') {
+                gpsBtn.className = 'py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-sky-600 text-white shadow';
+                simBtn.className = 'py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white';
+            } else {
+                simBtn.className = 'py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow';
+                gpsBtn.className = 'py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white';
+            }
+        }
+
+        function setTrackingMode(mode) {
+            trackingMode = mode;
+            updateTrackingModeButtonsUI();
+
+            if (isBroadcasting) {
+                stopBroadcast(true);
+                startBroadcast();
+            }
+        }
+
+        function toggleBroadcast() {
+            if (isBroadcasting) {
+                stopBroadcast();
+            } else {
+                startBroadcast();
+            }
+        }
+
+        async function startBroadcast() {
+            isBroadcasting = true;
+            await requestScreenWakeLock();
+
+            const btn = document.getElementById('broadcastToggleBtn');
+            const icon = document.getElementById('broadcastIcon');
+            const text = document.getElementById('broadcastBtnText');
+
+            btn.className = 'w-full py-4 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-extrabold text-base shadow-xl transition-all flex items-center justify-center gap-3 live-pulse-btn active:scale-[0.98]';
+            icon.className = 'fa-solid fa-stop-circle text-xl';
+            text.textContent = 'إيقاف البث المباشر';
+
+            updateTopBadge(true);
+
+            if (trackingMode === 'gps') {
+                startRealGpsTracking();
+            } else {
+                startSimulatedMovement();
+            }
+        }
+
+        async function stopBroadcast(silent = false) {
+            isBroadcasting = false;
+            await releaseScreenWakeLock();
+
+            if (gpsWatchId !== null) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
+            }
+            if (simIntervalId !== null) {
+                clearInterval(simIntervalId);
+                simIntervalId = null;
+            }
+
+            driverState.speed = 0;
+            updateTelemetryUI();
+
+            const btn = document.getElementById('broadcastToggleBtn');
+            const icon = document.getElementById('broadcastIcon');
+            const text = document.getElementById('broadcastBtnText');
+
+            btn.className = 'w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-base shadow-xl transition-all flex items-center justify-center gap-3 active:scale-[0.98]';
+            icon.className = 'fa-solid fa-tower-broadcast text-xl';
+            text.textContent = 'بدء البث المباشر للموقع';
+
+            updateTopBadge(false);
+            await syncPayloadToBackend(buildCurrentPayload(false));
+
+            if (!silent) {
+                appendActivityLog('تم إيقاف البث المباشر للموقع', 'warning');
+                showMobileToast('تم إيقاف بث الموقع', 'info');
+            }
+        }
+
+        function startRealGpsTracking() {
+            if (!('geolocation' in navigator)) {
+                showMobileToast('متصفحك لا يدعم GPS، تم التحويل لوضع المحاكاة', 'warning');
+                setTrackingMode('sim');
+                return;
+            }
+
+            appendActivityLog('جاري التقاط موقع الهاتف الحقيقي عبر GPS...', 'info');
+
+            gpsWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const { latitude, longitude, accuracy, speed } = position.coords;
+                    driverState.lat = latitude;
+                    driverState.lng = longitude;
+                    driverState.accuracy = Math.round(accuracy || 10);
+                    driverState.speed = speed ? Math.round(speed * 3.6) : 0;
+
+                    recordAndBroadcastPosition('GPS حقيقي', false);
+                },
+                (error) => {
+                    let msg = 'تعذر الوصول لموقع الهاتف';
+                    if (error.code === 1) msg = 'يرجى السماح بصلاحية الموقع (GPS) من إعدادات المتصفح';
+                    showMobileToast(msg, 'warning');
+                    appendActivityLog(`تنبيه GPS: ${msg} — يمكنك التبديل لوضع المحاكاة للتجربة`, 'warning');
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 2000,
+                    timeout: 12000
+                }
+            );
+        }
+
+        function startSimulatedMovement() {
+            appendActivityLog('بدأ البث المباشر (وضع محاكاة الموصل كل 3 ثوانٍ)', 'success');
+            showMobileToast('بدأ البث التجريبي الحي في الموصل', 'success');
+
+            simulateSingleStep();
+
+            simIntervalId = setInterval(() => {
+                simulateSingleStep();
+            }, 3000);
+        }
+
+        function simulateSingleStep() {
+            if (driverState.status === 'stopped' || driverState.status === 'offline') {
+                driverState.speed = 0;
+            } else {
+                driverState.heading += (Math.random() - 0.5) * 0.45;
+                const step = 0.00045;
+                driverState.lat += Math.cos(driverState.heading) * step;
+                driverState.lng += Math.sin(driverState.heading) * step;
+                driverState.speed = Math.floor(Math.random() * 24) + 28;
+                driverState.accuracy = Math.floor(Math.random() * 6) + 6;
+            }
+
+            recordAndBroadcastPosition('محاكاة الموصل', true);
+        }
+
+        function buildCurrentPayload(isSimulated = false) {
+            return {
+                ...driverState,
+                isLive: isBroadcasting,
+                isSimulated: isSimulated,
+                updatedAtTimestamp: Date.now()
+            };
+        }
+
+        async function recordAndBroadcastPosition(sourceLabel, isSimulated = false) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            driverState.lastUpdated = now.toISOString();
+
+            driverState.trail.push([driverState.lat, driverState.lng]);
+            if (driverState.trail.length > 50) {
+                driverState.trail.shift();
+            }
+
+            broadcastCount++;
+            document.getElementById('broadcastCounterBadge').textContent = `${broadcastCount} إرسال`;
+
+            updateTelemetryUI();
+            updateMiniMapPosition();
+            await syncPayloadToBackend(buildCurrentPayload(isSimulated));
+
+            appendActivityLog(
+                `[${timeStr}] تحديث (${sourceLabel}): ${driverState.lat.toFixed(4)}, ${driverState.lng.toFixed(4)} • ${driverState.speed} كم/س`,
+                'success'
+            );
+        }
+
+        // ========================================================
+        // 6. تحديث الحالة والطلبات والتخزين المتزامن
+        // ========================================================
+        async function setDriverStatus(newStatus) {
+            driverState.status = newStatus;
+            if (newStatus === 'stopped' || newStatus === 'offline') {
+                driverState.speed = 0;
+            }
+
+            updateStatusButtonsUI();
+            updateTopBadge(isBroadcasting);
+            updateTelemetryUI();
+            await syncPayloadToBackend(buildCurrentPayload(trackingMode === 'sim'));
+
+            const statusNames = {
+                available: 'متاح للتوصيل',
+                delivering: 'في طريق التوصيل',
+                stopped: 'استراحة / متوقف',
+                offline: 'انتهى الدوام'
+            };
+
+            const nowTime = new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('lastStatusTime').textContent = `آخر تحديث: ${nowTime}`;
+            appendActivityLog(`تم تغيير الحالة إلى: ${statusNames[newStatus]}`, 'info');
+            showMobileToast(`حالتك الآن: ${statusNames[newStatus]}`, 'success');
+        }
+
+        function updateStatusButtonsUI() {
+            document.querySelectorAll('.status-choice-btn').forEach(btn => {
+                const st = btn.getAttribute('data-status');
+                if (st === driverState.status) {
+                    btn.classList.add('border-emerald-500', 'bg-emerald-950/30', 'ring-1', 'ring-emerald-500/40');
+                    btn.classList.remove('border-slate-700/80', 'bg-slate-950/60');
+                } else {
+                    btn.classList.remove('border-emerald-500', 'bg-emerald-950/30', 'ring-1', 'ring-emerald-500/40');
+                    btn.classList.add('border-slate-700/80', 'bg-slate-950/60');
+                }
+            });
+        }
+
+        function updateTopBadge(live) {
+            const badge = document.getElementById('topStatusBadge');
+            const dot = document.getElementById('topStatusDot');
+            const text = document.getElementById('topStatusText');
+
+            if (live) {
+                badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5';
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+                text.textContent = 'يبث الآن';
+            } else {
+                badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5';
+                dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+                text.textContent = 'جاهز للبث';
+            }
+        }
+
+        async function addPickedOrder() {
+            driverState.remainingOrders += 1;
+            updateOrdersUI();
+            await syncPayloadToBackend(buildCurrentPayload(trackingMode === 'sim'));
+            appendActivityLog(`تم استلام طلب جديد (العهدة الحالية: ${driverState.remainingOrders})`, 'info');
+            showMobileToast('تمت إضافة طلب جديد لعهدتك', 'info');
+        }
+
+        async function markOrderDelivered() {
+            if (driverState.remainingOrders > 0) {
+                driverState.remainingOrders -= 1;
+            }
+            driverState.deliveredOrders += 1;
+            updateOrdersUI();
+            await syncPayloadToBackend(buildCurrentPayload(trackingMode === 'sim'));
+            appendActivityLog(`تم تسجيل تسليم طلب بنجاح (الإجمالي اليوم: ${driverState.deliveredOrders})`, 'success');
+            showMobileToast('أحسنت! تم تسجيل تسليم الطلب', 'success');
+        }
+
+        async function resetOrdersCounter() {
+            driverState.remainingOrders = 0;
+            driverState.deliveredOrders = 0;
+            updateOrdersUI();
+            await syncPayloadToBackend(buildCurrentPayload(trackingMode === 'sim'));
+            showMobileToast('تم تصفير عداد الطلبات', 'info');
+        }
+
+        function updateOrdersUI() {
+            document.getElementById('ordersRemainingCount').textContent = driverState.remainingOrders;
+            document.getElementById('ordersDeliveredCount').textContent = driverState.deliveredOrders;
+        }
+
+        function updateTelemetryUI() {
+            document.getElementById('liveSpeed').innerHTML = `${driverState.speed} <small class="text-[10px] font-cairo">كم/س</small>`;
+            document.getElementById('liveAccuracy').innerHTML = `${driverState.accuracy} <small class="text-[10px] font-cairo">متر</small>`;
+            document.getElementById('liveCoordsShort').textContent = `${driverState.lat.toFixed(4)}, ${driverState.lng.toFixed(4)}`;
+        }
+
+        function saveStateToStorage(customPayload = null) {
+            localStorage.setItem('waseet_active_driver_session', JSON.stringify(driverState));
+
+            let allLiveDrivers = {};
+            try {
+                allLiveDrivers = JSON.parse(localStorage.getItem('waseet_mosul_fleet_live') || '{}');
+            } catch (e) {
+                allLiveDrivers = {};
+            }
+
+            const payload = customPayload || buildCurrentPayload(trackingMode === 'sim');
+            allLiveDrivers[driverState.id] = payload;
+
+            localStorage.setItem('waseet_mosul_fleet_live', JSON.stringify(allLiveDrivers));
+
+            if (syncChannel) {
+                syncChannel.postMessage({
+                    type: 'DRIVER_LOCATION_UPDATE',
+                    payload: payload
+                });
+            }
+        }
+
+        // ========================================================
+        // 7. نسخ رسالة الموقع السريعة وسجل التحديثات
+        // ========================================================
+        function copyQuickLocationMessage() {
+            const statusLabels = {
+                available: 'متاح للتوصيل',
+                delivering: 'في طريق التوصيل',
+                stopped: 'استراحة / متوقف',
+                offline: 'انتهى الدوام'
+            };
+
+            const mapsUrl = `https://www.google.com/maps?q=${driverState.lat.toFixed(6)},${driverState.lng.toFixed(6)}`;
+            const message = `📍 تحديث موقع مندوب الوسيط (الموصل)
+` +
+                            `👤 المندوب: ${driverState.name}
+` +
+                            `🏘️ المنطقة: ${driverState.area}
+` +
+                            `🚦 الحالة: ${statusLabels[driverState.status]}
+` +
+                            `📦 المنجز: ${driverState.deliveredOrders} | المتبقي: ${driverState.remainingOrders}
+` +
+                            `🗺️ الموقع على الخريطة: ${mapsUrl}`;
+
+            const buffer = document.getElementById('hiddenCopyBuffer');
+            buffer.value = message;
+            buffer.classList.remove('sr-only');
+            buffer.select();
+            buffer.setSelectionRange(0, 99999);
+
+            try {
+                document.execCommand('copy');
+                showMobileToast('تم نسخ رسالة الموقع! يمكنك لصقها وإرسالها للمكتب فوراً', 'success');
+            } catch (err) {
+                showMobileToast('تعذر النسخ التلقائي، يرجى المحاولة مرة أخرى', 'warning');
+            }
+            buffer.classList.add('sr-only');
+        }
+
+        function appendActivityLog(text, type = 'info') {
+            const logList = document.getElementById('activityLogList');
+            if (broadcastCount === 1 || logList.children[0]?.classList.contains('text-center')) {
+                logList.innerHTML = '';
+            }
+
+            const colors = {
+                success: 'text-emerald-400 border-emerald-500/20 bg-emerald-950/20',
+                warning: 'text-amber-400 border-amber-500/20 bg-amber-950/20',
+                info: 'text-sky-300 border-sky-500/20 bg-sky-950/20'
+            };
+
+            const item = document.createElement('div');
+            item.className = `px-2.5 py-1.5 rounded-lg border ${colors[type]} leading-snug`;
+            item.textContent = text;
+
+            logList.prepend(item);
+            if (logList.children.length > 25) {
+                logList.lastChild.remove();
+            }
+        }
+
+        function showMobileToast(message, type = 'info') {
+            const container = document.getElementById('mobileToastContainer');
+            const toast = document.createElement('div');
+
+            const styles = {
+                success: 'bg-emerald-950/95 border-emerald-500/60 text-emerald-200',
+                warning: 'bg-amber-950/95 border-amber-500/60 text-amber-200',
+                info: 'bg-slate-900/95 border-sky-500/60 text-sky-200'
+            };
+
+            const icons = {
+                success: 'fa-circle-check text-emerald-400',
+                warning: 'fa-triangle-exclamation text-amber-400',
+                info: 'fa-circle-info text-sky-400'
+            };
+
+            toast.className = `px-4 py-3 rounded-2xl border backdrop-blur-md shadow-2xl flex items-center gap-2.5 text-xs font-bold transition-all duration-300 opacity-0 translate-y-2 ${styles[type]}`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type]} text-base"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ========================================================
+        // 8. التشغيل عند تحميل الصفحة
+        // ========================================================
+        window.onload = function () {
+            populateDriversDropdown();
+
+            if (!APPS_SCRIPT_URL) {
+                const tag = document.getElementById('backendStatusTag');
+                if (tag) {
+                    tag.textContent = 'تخزين محلي فقط (تحقق من config.js)';
+                    tag.className = 'text-[10px] font-bold text-amber-400';
+                }
+            }
+
+            const savedSession = localStorage.getItem('waseet_active_driver_session');
+            if (savedSession) {
+                try {
+                    const parsed = JSON.parse(savedSession);
+                    if (parsed && parsed.name) {
+                        driverState = { ...driverState, ...parsed };
+                        openDashboardScreen();
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        };
+    </script>
 </body>
 </html>
