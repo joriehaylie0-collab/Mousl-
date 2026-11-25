@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>تتبع المندوب</title>
+<style>
+  :root { --g:#16a34a; --r:#dc2626; }
+  * { box-sizing: border-box; }
+  body { margin:0 auto; max-width:480px; padding:16px; background:#f4f6f8; color:#111;
+         font-family: system-ui, "Segoe UI", Tahoma, sans-serif; }
+  h1 { font-size:20px; text-align:center; margin:8px 0 16px; }
+  select { width:100%; font-size:18px; padding:12px; border-radius:10px; border:1px solid #bbb; background:#fff; }
+  #toggle { width:100%; margin-top:16px; padding:24px; font-size:24px; font-weight:700;
+            border:0; border-radius:16px; color:#fff; background:var(--g); }
+  #toggle.on { background:var(--r); }
+  #state { text-align:center; font-size:20px; margin:16px 0 4px; font-weight:600; }
+  #wk { text-align:center; font-size:13px; color:#555; min-height:18px; }
+  #warn { background:#fef3c7; border-radius:10px; padding:10px; font-size:14px; margin-top:12px; }
+  .row { display:flex; gap:8px; align-items:center; margin-top:16px; }
+  .row label { flex:1; font-size:15px; }
+  #test { padding:10px 14px; font-size:15px; border-radius:10px; border:1px solid #888; background:#fff; }
+  #log { margin-top:16px; font:13px/1.7 ui-monospace, Consolas, monospace; direction:ltr; text-align:left; }
+  #log .ok { color:#166534; } #log .bad { color:#b91c1c; }
+</style>
+</head>
+<body>
+<h1>📍 تتبع المندوب</h1>
+
+<select id="rep"></select>
+<button id="toggle">▶ تشغيل التتبع</button>
+<div id="state">⚪ التتبع متوقف</div>
+<div id="wk"></div>
+
+<div id="warn">أبقِ التطبيق مفتوحاً في المقدمة والشاشة مضاءة (يمكن وضع الهاتف على الشاحن). المتصفحات توقف الموقع عند إغلاق الشاشة أو الخروج من التطبيق.</div>
+
+<div class="row">
+  <label><input type="checkbox" id="sim"> وضع المحاكاة (موقع تجريبي كل 5 ثوانٍ)</label>
+  <button id="test">اختبار الآن</button>
+</div>
+
+<div id="log"></div>
+
+<script src="config.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const sel = $('rep');
+const S = { timer: null, running: false, wake: null, last: null, simPos: null };
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+
+sel.add(new Option('— اختر اسمك —', ''));
+CONFIG.REPS.forEach(r => sel.add(new Option(r.name, r.id)));
+sel.value = store.get('rep') || '';
+
+if (CONFIG.ENDPOINT.includes('PASTE_')) {
+  $('warn').textContent = '⚠️ لم يتم ضبط رابط الاستقبال في config.js بعد.';
+}
+
+function log(msg, bad) {
+  const d = document.createElement('div');
+  d.className = bad ? 'bad' : 'ok';
+  d.textContent = new Date().toLocaleTimeString('en-GB') + '  ' + msg;
+  const L = $('log'); L.prepend(d);
+  while (L.children.length > 8) L.lastChild.remove();
+}
+
+function repName() {
+  const r = CONFIG.REPS.find(x => String(x.id) === sel.value);
+  return r ? r.name : ('مندوب ' + sel.value);
+}
+
+function ui() {
+  $('toggle').textContent = S.running ? '⏹ إيقاف التتبع' : '▶ تشغيل التتبع';
+  $('toggle').className = S.running ? 'on' : '';
+  $('state').textContent = S.running ? '🟢 التتبع يعمل' : '⚪ التتبع متوقف';
+  sel.disabled = S.running;
+}
+
+// ---------- الموقع ----------
+function geoErr(err) {
+  if (err.code === 1) return 'تم رفض صلاحية الموقع';
+  if (err.code === 2) return 'تعذر تحديد الموقع (فعّل GPS)';
+  return 'انتهت مهلة GPS';
+}
+function getPos() {
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej({ code: 2 });
+    navigator.geolocation.getCurrentPosition(
+      p => res({ lat: p.coords.latitude, lng: p.coords.longitude,
+                 acc: p.coords.accuracy, speed: p.coords.speed }),
+      err => rej(err),
+      { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
+  });
+}
+function fakePos() {
+  const id = parseInt(sel.value, 10) || 1;
+  if (!S.simPos) {
+    S.simPos = {
+      lat: CONFIG.MAP_CENTER[0] + (((id * 37) % 80) - 40) / 1000,
+      lng: CONFIG.MAP_CENTER[1] + (((id * 53) % 80) - 40) / 1000
+    };
+  }
+  S.simPos.lat += (Math.random() - 0.5) * 0.0016;
+  S.simPos.lng += (Math.random() - 0.5) * 0.0016;
+  return { lat: S.simPos.lat, lng: S.simPos.lng, acc: 10, speed: Math.random() > 0.3 ? 5 : 0 };
+}
+function dist(a, b) {
+  const R = 6371000, t = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * t, dLng = (b.lng - a.lng) * t;
+  const h = Math.sin(dLat / 2) ** 2 +
+            Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function statusOf(pos) {
+  let v = pos.speed;
+  const now = Date.now();
+  if ((v == null || isNaN(v)) && S.last) v = dist(S.last, pos) / ((now - S.last.t) / 1000);
+  S.last = { lat: pos.lat, lng: pos.lng, t: now };
+  return (v != null && v > 1) ? 'moving' : 'stopped';
+}
+async function battery() {
+  try { const b = await navigator.getBattery(); return Math.round(b.level * 100); }
+  catch (e) { return ''; }
+}
+
+// ---------- الإرسال ----------
+async function send(pos, sim) {
+  const status = statusOf(pos);
+  const q = new URLSearchParams({
+    action: 'ping', key: CONFIG.KEY, id: sel.value, name: repName(),
+    lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), status,
+    acc: Math.round(pos.acc || 0), bat: await battery(),
+    sim: sim ? 1 : 0, t: Date.now()
+  });
+  const r = await fetch(CONFIG.ENDPOINT + '?' + q.toString(), { cache: 'no-store' });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'رفض الخادم');
+  log(`✓ أُرسل ${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)} [${status}]${sim ? ' (محاكاة)' : ''}`);
+}
+
+async function tick() {
+  try {
+    const sim = $('sim').checked;
+    await send(sim ? fakePos() : await getPos(), sim);
+  } catch (e) {
+    const msg = (e && e.code) ? geoErr(e) : (e.message || 'فشل الإرسال');
+    log('✗ ' + msg, true);
+    if (e && e.code === 1) stop();
+  }
+}
+
+// ---------- التشغيل / الإيقاف ----------
+async function getWake() {
+  try {
+    if ('wakeLock' in navigator) {
+      S.wake = await navigator.wakeLock.request('screen');
+      S.wake.addEventListener('release', () => { S.wake = null; });
+      $('wk').textContent = '🔒 الشاشة ستبقى مضاءة أثناء التتبع';
+    } else {
+      $('wk').textContent = 'متصفحك لا يدعم إبقاء الشاشة مضاءة، عطّل قفل الشاشة يدوياً';
+    }
+  } catch (e) {}
+}
+function releaseWake() {
+  try { if (S.wake) S.wake.release(); } catch (e) {}
+  S.wake = null; $('wk').textContent = '';
+}
+
+function schedule() {
+  clearInterval(S.timer);
+  const sec = $('sim').checked ? CONFIG.SIM_INTERVAL_SEC : CONFIG.INTERVAL_SEC;
+  S.timer = setInterval(tick, sec * 1000);
+}
+function start() {
+  if (!sel.value) return log('اختر اسمك أولاً', true);
+  store.set('rep', sel.value); store.set('on', '1');
+  S.running = true; S.last = null; ui();
+  getWake(); tick(); schedule();
+}
+function stop() {
+  clearInterval(S.timer); S.running = false;
+  store.set('on', '0'); releaseWake(); ui();
+}
+
+$('toggle').onclick = () => (S.running ? stop() : start());
+$('sim').onchange = () => { S.simPos = null; if (S.running) schedule(); };
+$('test').onclick = async () => {
+  if (!sel.value) return log('اختر اسمك أولاً', true);
+  try { await send(fakePos(), true); } catch (e) { log('✗ ' + (e.message || 'فشل'), true); }
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && S.running) { getWake(); tick(); }
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// تشغيل تلقائي عند فتح التطبيق إذا كان يعمل سابقاً
+if (store.get('on') === '1' && sel.value) start();
+ui();
+</script>
+</body>
+</html>
