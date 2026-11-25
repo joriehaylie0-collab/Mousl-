@@ -59,9 +59,9 @@
             <span id="streamStatusBadge" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
                 متوقف
             </span>
-            <a href="map.html" class="px-2.5 py-1.5 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 text-sky-300 text-xs font-bold transition">
-                الخريطة
-            </a>
+            <span class="px-2.5 py-1 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-300 text-[11px] font-bold">
+                بث للمتابعة فقط
+            </span>
         </div>
     </header>
 
@@ -138,7 +138,7 @@
                 </div>
             </div>
             <p id="gpsHintText" class="text-[11px] text-slate-400">
-                يقرأ إحداثيات الهاتف الفعلية وسرعته ويرسلها مباشرة إلى الخريطة و Apps Script.
+                يقرأ إحداثيات الهاتف الفعلية وسرعته ويرسلها مباشرة إلى قسم المتابعة فقط دون إظهار مواقع الكباتن الآخرين.
             </p>
         </section>
 
@@ -194,7 +194,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // قائمة كباتن الاستلام الـ 14 الموحدة (مطابقة تماماً لصفحة الخريطة map.html)
         const CAPTAINS_LIST = [
             { id: 1, name: "كابتن الاستلام مصطفى محمد", lat: 36.3325, lng: 43.1120, delivered: 14, remaining: 3 },
             { id: 2, name: "كابتن الاستلام محمد طارق", lat: 36.3640, lng: 43.1580, delivered: 19, remaining: 2 },
@@ -338,12 +337,12 @@
 
         function loadCaptainProfile(id) {
             const base = CAPTAINS_LIST.find(c => String(c.id) === String(id)) || CAPTAINS_LIST[0];
-            let savedFleet = {};
+            let existing = {};
             try {
-                savedFleet = JSON.parse(localStorage.getItem('waseet_mosul_fleet_live') || '{}');
+                const rawSelf = localStorage.getItem(`waseet_self_captain_${base.id}`);
+                if (rawSelf) existing = JSON.parse(rawSelf) || {};
             } catch (e) {}
 
-            const existing = savedFleet[String(base.id)] || {};
             currentCaptain = {
                 ...base,
                 delivered: existing.deliveredOrders ?? base.delivered,
@@ -489,9 +488,7 @@
             };
 
             try {
-                const rawFleet = JSON.parse(localStorage.getItem('waseet_mosul_fleet_live') || '{}');
-                rawFleet[String(payload.id)] = payload;
-                localStorage.setItem('waseet_mosul_fleet_live', JSON.stringify(rawFleet));
+                localStorage.setItem(`waseet_self_captain_${payload.id}`, JSON.stringify(payload));
             } catch (e) {}
 
             if (syncChannel) {
