@@ -265,6 +265,27 @@
         let jsonBinQueue = Promise.resolve();
         let lastJsonBinSyncAt = 0;
 
+        function sanitizeCoords(latRaw, lngRaw, fallbackLat, fallbackLng) {
+            let lat = Number(latRaw);
+            let lng = Number(lngRaw);
+
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                return { lat: Number(fallbackLat), lng: Number(fallbackLng) };
+            }
+
+            if (Math.abs(lat) > 40 && Math.abs(lng) <= 40) {
+                const tmp = lat;
+                lat = lng;
+                lng = tmp;
+            }
+
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180 || (lat === 0 && lng === 0)) {
+                return { lat: Number(fallbackLat), lng: Number(fallbackLng) };
+            }
+
+            return { lat, lng };
+        }
+
         function getLockedCaptainFromUrl() {
             try {
                 const params = new URLSearchParams(window.location.search);
@@ -375,10 +396,11 @@
                 delivered: existing.deliveredOrders ?? base.delivered,
                 remaining: existing.remainingOrders ?? base.remaining
             };
-            currentLat = Number(existing.lat ?? base.lat);
-            currentLng = Number(existing.lng ?? base.lng);
-            currentSpeed = Number(existing.speed ?? 0);
-            currentAccuracy = Number(existing.accuracy ?? 10);
+            const coords = sanitizeCoords(existing.lat, existing.lng, base.lat, base.lng);
+            currentLat = coords.lat;
+            currentLng = coords.lng;
+            currentSpeed = Number(existing.speed ?? 0) || 0;
+            currentAccuracy = Number(existing.accuracy ?? 10) || 10;
             currentStatus = existing.status || 'active';
             leftPage = false;
             awaySince = null;
@@ -387,20 +409,17 @@
 
         function applyAccuratePosition(pos, forceAccept = false) {
             if (!pos || !pos.coords) return false;
-            const lat = Number(pos.coords.latitude);
-            const lng = Number(pos.coords.longitude);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-
+            const coords = sanitizeCoords(pos.coords.latitude, pos.coords.longitude, currentLat, currentLng);
             const acc = Math.max(1, Math.round(Number(pos.coords.accuracy) || 10));
             const now = Date.now();
-            const isRecentHighAccuracy = acc <= currentAccuracy + 25 || (now - lastAcceptedGpsAt) > 15000;
+            const isRecentOrBetter = acc <= currentAccuracy + 25 || (now - lastAcceptedGpsAt) > 12000;
 
-            if (!forceAccept && !isRecentHighAccuracy && lastAcceptedGpsAt > 0) {
+            if (!forceAccept && !isRecentOrBetter && lastAcceptedGpsAt > 0) {
                 return false;
             }
 
-            currentLat = lat;
-            currentLng = lng;
+            currentLat = coords.lat;
+            currentLng = coords.lng;
             currentAccuracy = acc;
             lastAcceptedGpsAt = now;
 
@@ -558,8 +577,9 @@
                 headers['X-Master-Key'] = BIN_CFG.masterKey;
             }
 
-            const getRes = await fetch(`${baseUrl}/latest`, {
+            const getRes = await fetch(`${baseUrl}/latest?meta=false&t=${Date.now()}`, {
                 method: 'GET',
+                cache: 'no-store',
                 headers: BIN_CFG.masterKey ? { 'X-Master-Key': BIN_CFG.masterKey } : {}
             });
             if (!getRes.ok) {
@@ -602,6 +622,10 @@
         }
 
         function publishUpdate(forceBinSync = false) {
+            const coords = sanitizeCoords(currentLat, currentLng, currentCaptain.lat, currentCaptain.lng);
+            currentLat = coords.lat;
+            currentLng = coords.lng;
+
             const payload = {
                 id: currentCaptain.id,
                 name: currentCaptain.name,
