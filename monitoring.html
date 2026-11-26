@@ -37,18 +37,37 @@
         .leaflet-control-attribution {
             display: none !important;
         }
-        .captain-pin {
+        .kia-truck-marker {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 34px;
-            height: 34px;
+            transform: translate(-50%, -50%);
+        }
+        .kia-truck-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 9px;
             border-radius: 9999px;
             font-weight: 900;
-            font-size: 13px;
+            font-size: 12px;
             color: #ffffff;
             border: 2px solid #ffffff;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+            white-space: nowrap;
+        }
+        .kia-truck-label {
+            margin-top: 3px;
+            padding: 1px 6px;
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            color: #f8fafc;
+            font-size: 10px;
+            font-weight: 800;
+            white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
         }
         .pin-live { background: #10b981; }
         .pin-away { background: #f59e0b; }
@@ -61,11 +80,11 @@
     <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-700 flex items-center justify-center">
-                <i class="fa-solid fa-radar text-white"></i>
+                <i class="fa-solid fa-truck-pickup text-white"></i>
             </div>
             <div>
                 <h1 class="text-sm sm:text-base font-extrabold text-white">الوسيط — لوحة متابعة الكباتن في الموصل</h1>
-                <p class="text-[11px] text-slate-400">مراقبة البث المباشر وحالات الخروج من الرابط أو توقف الموقع</p>
+                <p class="text-[11px] text-slate-400">مراقبة البث المباشر وحالات الخروج من الرابط أو توقف الموقع — سيارات كيا حمل</p>
             </div>
         </div>
 
@@ -113,12 +132,12 @@
         <!-- الخريطة الرئيسية وقائمة الكباتن -->
         <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="font-extrabold text-white">خريطة انتشار الكباتن (الموصل)</span>
+                <div class="flex items-center justify-between text-xs flex-wrap gap-2">
+                    <span class="font-extrabold text-white">خريطة انتشار سيارات كيا حمل (الموصل)</span>
                     <div class="flex items-center gap-3 text-[11px] text-slate-300">
-                        <span><i class="fa-solid fa-circle text-emerald-500 ml-1"></i>بث مباشر</span>
-                        <span><i class="fa-solid fa-circle text-amber-500 ml-1"></i>خرج من الرابط</span>
-                        <span><i class="fa-solid fa-circle text-rose-500 ml-1"></i>متوقف / متأخر</span>
+                        <span><i class="fa-solid fa-truck-pickup text-emerald-500 ml-1"></i>بث مباشر</span>
+                        <span><i class="fa-solid fa-truck-pickup text-amber-500 ml-1"></i>خرج من الرابط</span>
+                        <span><i class="fa-solid fa-truck-pickup text-rose-500 ml-1"></i>متوقف / متأخر</span>
                     </div>
                 </div>
                 <div id="fleetMap"></div>
@@ -126,7 +145,7 @@
 
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col max-h-[520px]">
                 <div class="flex items-center justify-between mb-2.5">
-                    <span class="text-xs font-extrabold text-white">حالة الكباتن الـ 14</span>
+                    <span class="text-xs font-extrabold text-white">حالة الكباتن الـ 14 (كيا حمل)</span>
                     <span id="lastSyncClock" class="text-[11px] font-mono text-slate-400">—</span>
                 </div>
                 <div id="captainsList" class="space-y-2 overflow-y-auto pr-1 flex-1"></div>
@@ -140,20 +159,20 @@
 
     <script>
         const CAPTAINS_BASE = [
-            { id: 1, name: "كابتن الاستلام مصطفى محمد", lat: 36.3325, lng: 43.1120, delivered: 14, remaining: 3 },
-            { id: 2, name: "كابتن الاستلام محمد طارق", lat: 36.3640, lng: 43.1580, delivered: 19, remaining: 2 },
-            { id: 3, name: "كابتن الاستلام محمد زياد", lat: 36.3785, lng: 43.1490, delivered: 11, remaining: 4 },
-            { id: 4, name: "كابتن الاستلام احمد فراس", lat: 36.3690, lng: 43.1820, delivered: 16, remaining: 1 },
-            { id: 5, name: "كابتن الاستلام عجيب موفق", lat: 36.3575, lng: 43.1735, delivered: 22, remaining: 5 },
-            { id: 6, name: "كابتن الاستلام ريان سالم", lat: 36.3340, lng: 43.2080, delivered: 9, remaining: 4 },
-            { id: 7, name: "كابتن الاستلام عمار هاشم", lat: 36.3195, lng: 43.1280, delivered: 15, remaining: 2 },
-            { id: 8, name: "كابتن الاستلام يوسف فتح الله", lat: 36.3380, lng: 43.1365, delivered: 18, remaining: 3 },
-            { id: 9, name: "كابتن الاستلام عبدالله تحسين", lat: 36.3485, lng: 43.1645, delivered: 13, remaining: 2 },
-            { id: 10, name: "كابتن الاستلام احمد علي", lat: 36.1580, lng: 43.2520, delivered: 8, remaining: 3 },
-            { id: 11, name: "كابتن الاستلام محمد قحطان", lat: 35.8020, lng: 43.2890, delivered: 10, remaining: 0 },
-            { id: 12, name: "كابتن الاستلام عمر مازن", lat: 36.3420, lng: 43.1960, delivered: 17, remaining: 4 },
-            { id: 13, name: "كابتن الاستلام مصطفى مؤيد", lat: 36.3510, lng: 43.1855, delivered: 12, remaining: 3 },
-            { id: 14, name: "كابتن الاستلام قصي محمد", lat: 36.3855, lng: 43.1660, delivered: 21, remaining: 1 }
+            { id: 1, name: "كابتن الاستلام مصطفى محمد", vehicle: "كيا حمل", lat: 36.3325, lng: 43.1120, delivered: 14, remaining: 3 },
+            { id: 2, name: "كابتن الاستلام محمد طارق", vehicle: "كيا حمل", lat: 36.3640, lng: 43.1580, delivered: 19, remaining: 2 },
+            { id: 3, name: "كابتن الاستلام محمد زياد", vehicle: "كيا حمل", lat: 36.3785, lng: 43.1490, delivered: 11, remaining: 4 },
+            { id: 4, name: "كابتن الاستلام احمد فراس", vehicle: "كيا حمل", lat: 36.3690, lng: 43.1820, delivered: 16, remaining: 1 },
+            { id: 5, name: "كابتن الاستلام عجيب موفق", vehicle: "كيا حمل", lat: 36.3575, lng: 43.1735, delivered: 22, remaining: 5 },
+            { id: 6, name: "كابتن الاستلام ريان سالم", vehicle: "كيا حمل", lat: 36.3340, lng: 43.2080, delivered: 9, remaining: 4 },
+            { id: 7, name: "كابتن الاستلام عمار هاشم", vehicle: "كيا حمل", lat: 36.3195, lng: 43.1280, delivered: 15, remaining: 2 },
+            { id: 8, name: "كابتن الاستلام يوسف فتح الله", vehicle: "كيا حمل", lat: 36.3380, lng: 43.1365, delivered: 18, remaining: 3 },
+            { id: 9, name: "كابتن الاستلام عبدالله تحسين", vehicle: "كيا حمل", lat: 36.3485, lng: 43.1645, delivered: 13, remaining: 2 },
+            { id: 10, name: "كابتن الاستلام احمد علي", vehicle: "كيا حمل", lat: 36.1580, lng: 43.2520, delivered: 8, remaining: 3 },
+            { id: 11, name: "كابتن الاستلام محمد قحطان", vehicle: "كيا حمل", lat: 35.8020, lng: 43.2890, delivered: 10, remaining: 0 },
+            { id: 12, name: "كابتن الاستلام عمر مازن", vehicle: "كيا حمل", lat: 36.3420, lng: 43.1960, delivered: 17, remaining: 4 },
+            { id: 13, name: "كابتن الاستلام مصطفى مؤيد", vehicle: "كيا حمل", lat: 36.3510, lng: 43.1855, delivered: 12, remaining: 3 },
+            { id: 14, name: "كابتن الاستلام قصي محمد", vehicle: "كيا حمل", lat: 36.3855, lng: 43.1660, delivered: 21, remaining: 1 }
         ];
 
         const JSONBIN_CONFIG = {
@@ -187,6 +206,36 @@
         let captainsState = {};
         let isPollingJsonBin = false;
 
+        function buildKiaMarkerIcon(cap, health) {
+            return L.divIcon({
+                className: '',
+                html: `
+                    <div class="kia-truck-marker">
+                        <div class="kia-truck-badge ${health.pinClass}">
+                            <i class="fa-solid fa-truck-pickup"></i>
+                            <span>${cap.id}</span>
+                        </div>
+                        <div class="kia-truck-label">كيا حمل • ${cap.speed || 0} كم/س</div>
+                    </div>
+                `,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0]
+            });
+        }
+
+        function buildPopupHtml(cap, health) {
+            const coordsText = `${Number(cap.lat).toFixed(5)}, ${Number(cap.lng).toFixed(5)}`;
+            return `
+                <div style="text-align:right;font-family:'Cairo',sans-serif;min-width:190px;line-height:1.6">
+                    <div style="font-weight:900;font-size:13px">${cap.id}. ${cap.name}</div>
+                    <div style="font-size:11px;color:#0284c7;font-weight:800">المركبة: ${cap.vehicle || 'كيا حمل'}</div>
+                    <div style="font-size:11px">الحالة: <strong>${health.label}</strong> (${health.detail})</div>
+                    <div style="font-size:11px">الطلبات: عهدة <strong>${cap.remainingOrders}</strong> | مُسلّم <strong>${cap.deliveredOrders}</strong></div>
+                    <div style="font-size:11px">الدقة: ±${cap.accuracy || 10} م | الإحداثيات: ${coordsText}</div>
+                </div>
+            `;
+        }
+
         function loadInitialState() {
             CAPTAINS_BASE.forEach(base => {
                 let saved = null;
@@ -198,6 +247,7 @@
                 captainsState[base.id] = {
                     id: base.id,
                     name: base.name,
+                    vehicle: base.vehicle,
                     lat: Number(saved?.lat ?? base.lat),
                     lng: Number(saved?.lng ?? base.lng),
                     speed: Number(saved?.speed ?? 0),
@@ -229,6 +279,7 @@
             captainsState[payload.id] = {
                 ...prev,
                 ...payload,
+                vehicle: prev.vehicle || 'كيا حمل',
                 lat: Number.isFinite(nextLat) ? nextLat : prev.lat,
                 lng: Number.isFinite(nextLng) ? nextLng : prev.lng,
                 speed: Number(payload.speed ?? 0),
@@ -356,12 +407,8 @@
 
                 if (markers[cap.id]) {
                     markers[cap.id].setLatLng([cap.lat, cap.lng]);
-                    markers[cap.id].setIcon(L.divIcon({
-                        className: '',
-                        html: `<div class="captain-pin ${health.pinClass}">${cap.id}</div>`,
-                        iconSize: [34, 34],
-                        iconAnchor: [17, 17]
-                    }));
+                    markers[cap.id].setIcon(buildKiaMarkerIcon(cap, health));
+                    markers[cap.id].setPopupContent(buildPopupHtml(cap, health));
                 }
 
                 const showItem =
@@ -373,13 +420,19 @@
                     const card = document.createElement('button');
                     card.type = 'button';
                     card.onclick = () => {
-                        if (fleetMap) fleetMap.setView([cap.lat, cap.lng], 15);
+                        if (fleetMap) {
+                            fleetMap.setView([cap.lat, cap.lng], 15);
+                            if (markers[cap.id]) markers[cap.id].openPopup();
+                        }
                     };
                     card.className = 'w-full text-right bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl p-2.5 transition flex items-center justify-between gap-2';
                     card.innerHTML = `
                         <div class="min-w-0">
-                            <div class="text-xs font-extrabold text-white truncate">${cap.id}. ${cap.name}</div>
-                            <div class="text-[11px] text-slate-400 truncate mt-0.5">${health.detail}</div>
+                            <div class="text-xs font-extrabold text-white truncate">
+                                <i class="fa-solid fa-truck-pickup text-sky-400 ml-1"></i>
+                                ${cap.id}. ${cap.name}
+                            </div>
+                            <div class="text-[11px] text-slate-400 truncate mt-0.5">${cap.vehicle || 'كيا حمل'} • ${health.detail}</div>
                         </div>
                         <div class="flex flex-col items-end shrink-0 gap-1">
                             <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold border ${health.badgeClass}">${health.label}</span>
@@ -406,10 +459,10 @@
                 alertsList.innerHTML = alerts.map(({ cap, health }) => `
                     <div class="bg-slate-950/90 border border-amber-500/30 rounded-xl p-2.5 flex items-center justify-between gap-2">
                         <div class="min-w-0">
-                            <div class="font-bold text-amber-200 truncate">${cap.name}</div>
+                            <div class="font-bold text-amber-200 truncate"><i class="fa-solid fa-truck-pickup ml-1"></i>${cap.name}</div>
                             <div class="text-[11px] text-slate-300">${health.label} — ${health.detail}</div>
                         </div>
-                        <button onclick="if(fleetMap) fleetMap.setView([${cap.lat}, ${cap.lng}], 15)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-white shrink-0">
+                        <button onclick="if(fleetMap){fleetMap.setView([${cap.lat}, ${cap.lng}], 15); if(markers[${cap.id}]) markers[${cap.id}].openPopup();}" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-white shrink-0">
                             تحديد
                         </button>
                     </div>
@@ -428,13 +481,8 @@
             Object.values(captainsState).forEach(cap => {
                 const health = evaluateCaptainHealth(cap);
                 markers[cap.id] = L.marker([cap.lat, cap.lng], {
-                    icon: L.divIcon({
-                        className: '',
-                        html: `<div class="captain-pin ${health.pinClass}">${cap.id}</div>`,
-                        iconSize: [34, 34],
-                        iconAnchor: [17, 17]
-                    })
-                }).addTo(fleetMap).bindPopup(`<strong>${cap.name}</strong><br>${health.label}`);
+                    icon: buildKiaMarkerIcon(cap, health)
+                }).addTo(fleetMap).bindPopup(buildPopupHtml(cap, health));
             });
 
             if (syncChannel) {
