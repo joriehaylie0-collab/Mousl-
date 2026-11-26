@@ -3,13 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الوسيط — لوحة متابعة أسطول الموصل</title>
+    <title>الوسيط — قسم المتابعة المباشرة للكباتن</title>
 
+    <!-- خطوط عربية عصرية من Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- مكتبة أيقونات Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- مكتبة خرائط Leaflet.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Tailwind CSS للتصميم المتجاوب والعصري -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -17,449 +24,986 @@
                 extend: {
                     fontFamily: {
                         cairo: ['Cairo', 'sans-serif'],
+                        tajawal: ['Tajawal', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#172033',
+                            900: '#0f172a',
+                            950: '#090d16',
+                        }
                     }
                 }
             }
         }
     </script>
+
     <style>
         body {
             font-family: 'Cairo', sans-serif;
             background-color: #090d16;
             color: #f8fafc;
+            overflow: hidden;
         }
-        #fleetMap {
-            height: 460px;
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        #map {
             width: 100%;
-            border-radius: 16px;
+            height: 100%;
             z-index: 10;
+            background-color: #0b1120;
         }
-        .leaflet-control-attribution {
-            display: none !important;
+
+        .custom-driver-marker {
+            background: transparent;
+            border: none;
         }
-        .captain-pin {
+
+        .marker-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translate(-50%, -100%);
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+        }
+
+        .marker-wrapper:hover {
+            z-index: 9999 !important;
+            transform: translate(-50%, -105%) scale(1.08);
+        }
+
+        .marker-label {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(6px);
+            color: #f8fafc;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .kia-cargo-marker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translate(-50%, -100%);
+            transition: transform 0.25s ease;
+            cursor: pointer;
+        }
+        .kia-cargo-marker:hover {
+            z-index: 9999 !important;
+            transform: translate(-50%, -105%) scale(1.08);
+        }
+        .kia-cargo-box {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 34px;
-            height: 34px;
-            border-radius: 9999px;
-            font-weight: 900;
-            font-size: 13px;
+            width: 44px;
+            height: 30px;
+            border-radius: 9px;
             color: #ffffff;
             border: 2px solid #ffffff;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+            box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.9), 0 8px 18px rgba(0, 0, 0, 0.65);
         }
-        .pin-live { background: #10b981; }
-        .pin-away { background: #f59e0b; }
-        .pin-stopped { background: #ef4444; }
+        @keyframes cargoMoveBob {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-2.5px);
+            }
+        }
+        .kia-cargo-moving {
+            animation: cargoMoveBob 0.75s ease-in-out infinite;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: rgba(15, 23, 42, 0.96) !important;
+            backdrop-filter: blur(12px);
+            color: #f8fafc !important;
+            border: 1px solid rgba(51, 65, 85, 0.8);
+            border-radius: 14px !important;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.65) !important;
+            font-family: 'Cairo', sans-serif !important;
+            direction: rtl;
+            text-align: right;
+            padding: 0 !important;
+        }
+        .leaflet-popup-content {
+            margin: 0 !important;
+            min-width: 260px;
+        }
+        .leaflet-popup-tip {
+            background: rgba(15, 23, 42, 0.96) !important;
+            border: 1px solid rgba(51, 65, 85, 0.8);
+        }
+        .leaflet-popup-close-button {
+            color: #94a3b8 !important;
+            top: 10px !important;
+            left: 10px !important;
+            right: auto !important;
+            font-size: 18px !important;
+        }
+        .leaflet-popup-close-button:hover {
+            color: #f8fafc !important;
+        }
+
+        .leaflet-control-zoom a {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+        .leaflet-control-zoom a:hover {
+            background-color: #334155 !important;
+        }
+        .leaflet-control-attribution {
+            background: rgba(15, 23, 42, 0.7) !important;
+            color: #64748b !important;
+            font-size: 10px;
+        }
+        .leaflet-control-attribution a {
+            color: #38bdf8 !important;
+        }
     </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+<body class="h-screen w-screen flex flex-col select-none">
 
-    <!-- الشريط العلوي -->
-    <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+    <!-- الشريط العلوي (Top Header & Controls) -->
+    <header class="h-16 bg-slate-900/95 border-b border-slate-800 px-4 flex items-center justify-between z-30 shrink-0 shadow-lg">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-700 flex items-center justify-center">
-                <i class="fa-solid fa-radar text-white"></i>
+            <button id="toggleSidebarBtn" class="lg:hidden p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition" title="إظهار/إخفاء القائمة">
+                <i class="fa-solid fa-bars text-lg"></i>
+            </button>
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-950/50">
+                <i class="fa-solid fa-satellite-dish text-white text-lg"></i>
             </div>
             <div>
-                <h1 class="text-sm sm:text-base font-extrabold text-white">الوسيط — لوحة متابعة الكباتن في الموصل</h1>
-                <p class="text-[11px] text-slate-400">مراقبة البث المباشر وحالات الخروج من الرابط أو توقف الموقع</p>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">الوسيط لتتبّع الكباتن</h1>
+                    <span id="liveFeedBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        LIVE
+                    </span>
+                </div>
+                <p id="syncCaption" class="text-xs text-slate-400 hidden sm:block">قسم المتابعة فقط — مراقبة كباتن الاستلام الـ 14</p>
             </div>
         </div>
 
-        <div class="flex items-center gap-2 text-xs font-bold">
-            <button onclick="setFilter('all')" id="flt-all" class="px-3 py-1.5 rounded-xl bg-sky-600 text-white">الكل (14)</button>
-            <button onclick="setFilter('live')" id="flt-live" class="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300">يبث مباشر</button>
-            <button onclick="setFilter('alert')" class="px-3 py-1.5 rounded-xl bg-slate-800 text-amber-300 border border-amber-500/30" id="flt-alert">خروج / توقف</button>
+        <div class="flex items-center gap-2 sm:gap-3">
+            <button id="simToggleBtn" onclick="toggleSimulation()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold transition shadow-md shadow-emerald-950/40">
+                <i id="simToggleIcon" class="fa-solid fa-pause"></i>
+                <span id="simToggleText" class="hidden md:inline">إيقاف المحاكاة</span>
+            </button>
+
+            <div class="hidden sm:flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
+                <span class="text-xs text-slate-400 px-2">السرعة:</span>
+                <button onclick="setSimSpeed(1)" data-speed="1" class="speed-btn px-2 py-0.5 rounded text-xs font-bold bg-sky-600 text-white transition">1x</button>
+                <button onclick="setSimSpeed(2)" data-speed="2" class="speed-btn px-2 py-0.5 rounded text-xs font-bold text-slate-300 hover:text-white transition">2x</button>
+                <button onclick="setSimSpeed(5)" data-speed="5" class="speed-btn px-2 py-0.5 rounded text-xs font-bold text-slate-300 hover:text-white transition">5x</button>
+            </div>
+
+            <button onclick="fitAllDrivers()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-semibold transition" title="إظهار جميع الكباتن على الخريطة">
+                <i class="fa-solid fa-expand text-sky-400"></i>
+                <span class="hidden xl:inline">عرض الكل</span>
+            </button>
+
+            <div class="hidden md:flex flex-col items-end bg-slate-950/70 px-3 py-1 rounded-lg border border-slate-800">
+                <span id="mosulClock" class="text-sm font-extrabold text-sky-400 font-mono tracking-wider">--:--:--</span>
+                <span class="text-[10px] text-slate-400">توقيت الموصل</span>
+            </div>
         </div>
     </header>
 
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 space-y-4">
+    <!-- المحتوى الرئيسي: اللوحة الجانبية + الخريطة -->
+    <div class="flex-1 flex overflow-hidden relative">
 
-        <!-- شريط التنبيهات الفورية عند خروج كابتن أو توقف موقعه -->
-        <section id="alertsSection" class="hidden bg-amber-500/10 border border-amber-500/40 rounded-2xl p-3.5 space-y-2">
-            <div class="flex items-center justify-between">
-                <span class="text-xs sm:text-sm font-extrabold text-amber-300 flex items-center gap-2">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    تنبيهات خروج من الرابط أو توقف الموقع
-                </span>
-                <span id="alertCountBadge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500/20 text-amber-200">0</span>
-            </div>
-            <div id="alertsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-xs"></div>
-        </section>
+        <!-- اللوحة الجانبية -->
+        <aside id="sidebar" class="w-full sm:w-96 bg-slate-900/95 backdrop-blur-md border-l border-slate-800 flex flex-col z-20 absolute lg:relative inset-y-0 right-0 transition-transform duration-300 translate-x-0 shadow-2xl">
 
-        <!-- بطاقات الإحصاء السريع -->
-        <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
-                <span class="text-[11px] text-slate-400 block">يبث موقعاً الآن</span>
-                <span id="statLive" class="text-2xl font-black text-emerald-400">0</span>
-            </div>
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
-                <span class="text-[11px] text-slate-400 block">خرج من الرابط / خلفية</span>
-                <span id="statLeftPage" class="text-2xl font-black text-amber-400">0</span>
-            </div>
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
-                <span class="text-[11px] text-slate-400 block">متوقف / انقطع التحديث</span>
-                <span id="statStopped" class="text-2xl font-black text-rose-400">0</span>
-            </div>
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
-                <span class="text-[11px] text-slate-400 block">إجمالي الطلبات المسلمة</span>
-                <span id="statDelivered" class="text-2xl font-black text-sky-400">0</span>
-            </div>
-        </section>
-
-        <!-- الخريطة الرئيسية وقائمة الكباتن -->
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="font-extrabold text-white">خريطة انتشار الكباتن (الموصل)</span>
-                    <div class="flex items-center gap-3 text-[11px] text-slate-300">
-                        <span><i class="fa-solid fa-circle text-emerald-500 ml-1"></i>بث مباشر</span>
-                        <span><i class="fa-solid fa-circle text-amber-500 ml-1"></i>خرج من الرابط</span>
-                        <span><i class="fa-solid fa-circle text-rose-500 ml-1"></i>متوقف / متأخر</span>
+            <div class="p-3.5 border-b border-slate-800 bg-slate-950/50">
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    <div class="bg-slate-850 border border-slate-800 rounded-xl p-2">
+                        <div id="statTotal" class="text-lg font-extrabold text-white">14</div>
+                        <div class="text-[11px] text-slate-400">الإجمالي</div>
+                    </div>
+                    <div class="bg-emerald-950/30 border border-emerald-800/40 rounded-xl p-2">
+                        <div id="statActive" class="text-lg font-extrabold text-emerald-400">0</div>
+                        <div class="text-[11px] text-emerald-300/80">نشط</div>
+                    </div>
+                    <div class="bg-amber-950/30 border border-amber-800/40 rounded-xl p-2">
+                        <div id="statStopped" class="text-lg font-extrabold text-amber-400">0</div>
+                        <div class="text-[11px] text-amber-300/80">متوقف</div>
+                    </div>
+                    <div class="bg-sky-950/30 border border-sky-800/40 rounded-xl p-2">
+                        <div id="statOrders" class="text-lg font-extrabold text-sky-400">0</div>
+                        <div class="text-[11px] text-sky-300/80">طلبات اليوم</div>
                     </div>
                 </div>
-                <div id="fleetMap"></div>
             </div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col max-h-[520px]">
-                <div class="flex items-center justify-between mb-2.5">
-                    <span class="text-xs font-extrabold text-white">حالة الكباتن الـ 14</span>
-                    <span id="lastSyncClock" class="text-[11px] font-mono text-slate-400">—</span>
+            <div class="p-3.5 border-b border-slate-800 space-y-2.5">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" oninput="renderDriverList()" placeholder="ابحث باسم كابتن الاستلام..." class="w-full bg-slate-950 border border-slate-700/80 focus:border-sky-500 rounded-xl pr-10 pl-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none transition">
                 </div>
-                <div id="captainsList" class="space-y-2 overflow-y-auto pr-1 flex-1"></div>
+
+                <div class="flex items-center gap-1.5 text-xs">
+                    <button onclick="setFilter('all')" data-filter="all" class="filter-btn flex-1 py-1.5 rounded-lg font-bold bg-sky-600 text-white transition">الكل</button>
+                    <button onclick="setFilter('active')" data-filter="active" class="filter-btn flex-1 py-1.5 rounded-lg font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">نشط</button>
+                    <button onclick="setFilter('stopped')" data-filter="stopped" class="filter-btn flex-1 py-1.5 rounded-lg font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">متوقف</button>
+                    <button onclick="setFilter('offline')" data-filter="offline" class="filter-btn flex-1 py-1.5 rounded-lg font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">غير متصل</button>
+                </div>
             </div>
-        </section>
 
-    </main>
+            <div id="driversList" class="flex-1 overflow-y-auto p-3 space-y-2.5"></div>
 
+            <div class="p-2.5 border-t border-slate-800 bg-slate-950/80 text-[11px] text-slate-400 flex items-center justify-between">
+                <span><i class="fa-solid fa-circle-info text-sky-400 ml-1"></i> انقر على الكابتن للتتبع والمسار</span>
+                <button onclick="clearAllTrails()" class="text-rose-400 hover:text-rose-300 font-semibold transition">مسح المسارات</button>
+            </div>
+        </aside>
+
+        <!-- قسم الخريطة التفاعلية -->
+        <main class="flex-1 relative h-full">
+            <div id="map"></div>
+
+            <div class="absolute top-4 left-4 z-20 flex flex-col gap-2">
+                <div class="bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/80 shadow-xl flex gap-1">
+                    <button onclick="switchMapLayer('dark')" id="layer-dark" class="layer-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 text-white transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-moon"></i> داكنة
+                    </button>
+                    <button onclick="switchMapLayer('street')" id="layer-street" class="layer-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-map"></i> قياسية
+                    </button>
+                    <button onclick="switchMapLayer('satellite')" id="layer-satellite" class="layer-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-earth-asia"></i> قمر صناعي
+                    </button>
+                </div>
+            </div>
+
+            <div class="absolute bottom-5 left-4 z-20 bg-slate-900/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-700/80 shadow-xl flex flex-wrap items-center gap-4 text-xs">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 shadow shadow-emerald-500/50"></span>
+                    <span class="text-slate-200 font-semibold">نشط / في الطريق</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3 h-3 rounded-full bg-amber-500 shadow shadow-amber-500/50"></span>
+                    <span class="text-slate-200 font-semibold">متوقف / تسليم</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3 h-3 rounded-full bg-slate-500"></span>
+                    <span class="text-slate-400 font-semibold">غير متصل</span>
+                </div>
+            </div>
+
+            <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+        </main>
+    </div>
+
+    <!-- تحميل config.js الخاص بالنظام إن وُجد -->
     <script src="config.js" onerror="window.__MISSING_CONFIG__ = true;"></script>
+
+    <!-- مكتبة Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        const CAPTAINS_BASE = [
-            { id: 1, name: "كابتن الاستلام مصطفى محمد", lat: 36.3325, lng: 43.1120, delivered: 14, remaining: 3 },
-            { id: 2, name: "كابتن الاستلام محمد طارق", lat: 36.3640, lng: 43.1580, delivered: 19, remaining: 2 },
-            { id: 3, name: "كابتن الاستلام محمد زياد", lat: 36.3785, lng: 43.1490, delivered: 11, remaining: 4 },
-            { id: 4, name: "كابتن الاستلام احمد فراس", lat: 36.3690, lng: 43.1820, delivered: 16, remaining: 1 },
-            { id: 5, name: "كابتن الاستلام عجيب موفق", lat: 36.3575, lng: 43.1735, delivered: 22, remaining: 5 },
-            { id: 6, name: "كابتن الاستلام ريان سالم", lat: 36.3340, lng: 43.2080, delivered: 9, remaining: 4 },
-            { id: 7, name: "كابتن الاستلام عمار هاشم", lat: 36.3195, lng: 43.1280, delivered: 15, remaining: 2 },
-            { id: 8, name: "كابتن الاستلام يوسف فتح الله", lat: 36.3380, lng: 43.1365, delivered: 18, remaining: 3 },
-            { id: 9, name: "كابتن الاستلام عبدالله تحسين", lat: 36.3485, lng: 43.1645, delivered: 13, remaining: 2 },
-            { id: 10, name: "كابتن الاستلام احمد علي", lat: 36.1580, lng: 43.2520, delivered: 8, remaining: 3 },
-            { id: 11, name: "كابتن الاستلام محمد قحطان", lat: 35.8020, lng: 43.2890, delivered: 10, remaining: 0 },
-            { id: 12, name: "كابتن الاستلام عمر مازن", lat: 36.3420, lng: 43.1960, delivered: 17, remaining: 4 },
-            { id: 13, name: "كابتن الاستلام مصطفى مؤيد", lat: 36.3510, lng: 43.1855, delivered: 12, remaining: 3 },
-            { id: 14, name: "كابتن الاستلام قصي محمد", lat: 36.3855, lng: 43.1660, delivered: 21, remaining: 1 }
+        // قائمة كباتن الاستلام الـ 14 الموحدة
+        const UNIFIED_DRIVERS_ROSTER = [
+            { id: 1, name: "كابتن الاستلام مصطفى محمد", lat: 36.3325, lng: 43.1120, status: "active", vehicle: "car", delivered: 14, remaining: 3, speed: 42, phone: "0770 123 4501", heading: 0.4 },
+            { id: 2, name: "كابتن الاستلام محمد طارق", lat: 36.3640, lng: 43.1580, status: "active", vehicle: "car", delivered: 19, remaining: 2, speed: 38, phone: "0770 123 4502", heading: 1.8 },
+            { id: 3, name: "كابتن الاستلام محمد زياد", lat: 36.3785, lng: 43.1490, status: "stopped", vehicle: "car", delivered: 11, remaining: 4, speed: 0, phone: "0770 123 4503", heading: 2.5 },
+            { id: 4, name: "كابتن الاستلام احمد فراس", lat: 36.3690, lng: 43.1820, status: "active", vehicle: "car", delivered: 16, remaining: 1, speed: 47, phone: "0770 123 4504", heading: 3.9 },
+            { id: 5, name: "كابتن الاستلام عجيب موفق", lat: 36.3575, lng: 43.1735, status: "active", vehicle: "car", delivered: 22, remaining: 5, speed: 35, phone: "0770 123 4505", heading: 5.1 },
+            { id: 6, name: "كابتن الاستلام ريان سالم", lat: 36.3340, lng: 43.2080, status: "active", vehicle: "car", delivered: 9, remaining: 4, speed: 51, phone: "0770 123 4506", heading: 0.9 },
+            { id: 7, name: "كابتن الاستلام عمار هاشم", lat: 36.3195, lng: 43.1280, status: "stopped", vehicle: "car", delivered: 15, remaining: 2, speed: 0, phone: "0770 123 4507", heading: 2.1 },
+            { id: 8, name: "كابتن الاستلام يوسف فتح الله", lat: 36.3380, lng: 43.1365, status: "active", vehicle: "car", delivered: 18, remaining: 3, speed: 29, phone: "0770 123 4508", heading: 4.4 },
+            { id: 9, name: "كابتن الاستلام عبدالله تحسين", lat: 36.3485, lng: 43.1645, status: "active", vehicle: "car", delivered: 13, remaining: 2, speed: 33, phone: "0770 123 4509", heading: 1.2 },
+            { id: 10, name: "كابتن الاستلام احمد علي", lat: 36.1580, lng: 43.2520, status: "active", vehicle: "car", delivered: 8, remaining: 3, speed: 64, phone: "0770 123 4510", heading: 2.9 },
+            { id: 11, name: "كابتن الاستلام محمد قحطان", lat: 35.8020, lng: 43.2890, status: "offline", vehicle: "car", delivered: 10, remaining: 0, speed: 0, phone: "0770 123 4511", heading: 0.0 },
+            { id: 12, name: "كابتن الاستلام عمر مازن", lat: 36.3420, lng: 43.1960, status: "active", vehicle: "car", delivered: 17, remaining: 4, speed: 44, phone: "0770 123 4512", heading: 3.4 },
+            { id: 13, name: "كابتن الاستلام مصطفى مؤيد", lat: 36.3510, lng: 43.1855, status: "stopped", vehicle: "car", delivered: 12, remaining: 3, speed: 0, phone: "0770 123 4513", heading: 5.5 },
+            { id: 14, name: "كابتن الاستلام قصي محمد", lat: 36.3855, lng: 43.1660, status: "active", vehicle: "car", delivered: 21, remaining: 1, speed: 40, phone: "0770 123 4514", heading: 1.5 }
         ];
 
-        const JSONBIN_CONFIG = {
-            binId: '6b07872413d2c8610b12db5e',
-            masterKey: '$2a$10$qOS1lm7Vo1tq9r.w/vTMoOnHrSJ7MKisq.6csaRUyFQ/7vRaV4PfS'
-        };
-
-        function resolveJsonBinConfig() {
-            const binId =
-                (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.JSONBIN_BIN_ID || APP_CONFIG.BIN_ID)) ||
-                (typeof CONFIG !== 'undefined' && (CONFIG.JSONBIN_BIN_ID || CONFIG.BIN_ID)) ||
-                window.JSONBIN_BIN_ID ||
-                JSONBIN_CONFIG.binId;
-
-            const masterKey =
-                (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.JSONBIN_MASTER_KEY || APP_CONFIG.MASTER_KEY || APP_CONFIG.JSONBIN_API_KEY)) ||
-                (typeof CONFIG !== 'undefined' && (CONFIG.JSONBIN_MASTER_KEY || CONFIG.MASTER_KEY || CONFIG.JSONBIN_API_KEY)) ||
-                window.JSONBIN_MASTER_KEY ||
-                JSONBIN_CONFIG.masterKey;
-
-            return { binId: String(binId || '').trim(), masterKey: String(masterKey || '').trim() };
+        function resolveEndpoint() {
+            if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.ENDPOINT) return APP_CONFIG.ENDPOINT;
+            if (typeof CONFIG !== 'undefined' && CONFIG.ENDPOINT) return CONFIG.ENDPOINT;
+            if (typeof ENDPOINT !== 'undefined' && typeof ENDPOINT === 'string') return ENDPOINT;
+            if (window.ENDPOINT) return window.ENDPOINT;
+            return '';
         }
 
-        const BIN_CFG = resolveJsonBinConfig();
-        const STALE_AFTER_SECONDS = 35;
-
+        const ENDPOINT_URL = resolveEndpoint();
         const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('waseet_mosul_live_sync') : null;
-        let fleetMap = null;
-        const markers = {};
+
+        const MOSUL_CENTER = [36.3489, 43.1577];
+
+        const map = L.map('map', {
+            center: MOSUL_CENTER,
+            zoom: 12,
+            zoomControl: false
+        });
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        const mapLayers = {
+            dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }),
+            street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }),
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 18
+            })
+        };
+
+        mapLayers.dark.addTo(map);
+
+        function switchMapLayer(layerKey) {
+            Object.values(mapLayers).forEach(layer => map.removeLayer(layer));
+            mapLayers[layerKey].addTo(map);
+
+            document.querySelectorAll('.layer-btn').forEach(btn => {
+                btn.classList.remove('bg-sky-600', 'text-white');
+                btn.classList.add('text-slate-300', 'hover:bg-slate-800');
+            });
+            const activeBtn = document.getElementById(`layer-${layerKey}`);
+            activeBtn.classList.add('bg-sky-600', 'text-white');
+            activeBtn.classList.remove('text-slate-300', 'hover:bg-slate-800');
+        }
+
+        let drivers = UNIFIED_DRIVERS_ROSTER.map(d => ({
+            ...d,
+            trail: [[d.lat, d.lng]],
+            showTrail: false,
+            lastUpdate: "الآن",
+            hasLiveTelemetry: false
+        }));
+
+        let markersMap = {};
+        let polylinesMap = {};
         let currentFilter = 'all';
-        let captainsState = {};
-        let isPollingJsonBin = false;
+        let selectedDriverId = null;
+        let isSimulating = true;
+        let simSpeed = 1;
 
-        function loadInitialState() {
-            CAPTAINS_BASE.forEach(base => {
-                let saved = null;
-                try {
-                    const raw = localStorage.getItem(`waseet_self_captain_${base.id}`);
-                    if (raw) saved = JSON.parse(raw);
-                } catch (e) {}
+        function mapIncomingStatus(rawStatus, speedVal) {
+            if (rawStatus === 'offline') return 'offline';
+            if (rawStatus === 'stopped') return 'stopped';
+            if (rawStatus === 'delivering' || rawStatus === 'available' || rawStatus === 'active') {
+                return 'active';
+            }
+            return (Number(speedVal) > 0) ? 'active' : 'stopped';
+        }
 
-                captainsState[base.id] = {
-                    id: base.id,
-                    name: base.name,
-                    lat: Number(saved?.lat ?? base.lat),
-                    lng: Number(saved?.lng ?? base.lng),
-                    speed: Number(saved?.speed ?? 0),
-                    accuracy: Number(saved?.accuracy ?? 10),
-                    status: saved?.status || 'offline',
-                    remainingOrders: Number(saved?.remainingOrders ?? base.remaining),
-                    deliveredOrders: Number(saved?.deliveredOrders ?? base.delivered),
-                    isLive: Boolean(saved?.isLive),
-                    leftPage: Boolean(saved?.leftPage),
-                    awaySince: saved?.awaySince || null,
-                    lastUpdated: saved?.lastUpdated || null
-                };
+        function applyTelemetryRecord(rec) {
+            if (!rec || typeof rec !== 'object') return;
+            const lat = parseFloat(rec.lat ?? rec.latitude);
+            const lng = parseFloat(rec.lng ?? rec.longitude);
+            const name = String(rec.name ?? rec.driverName ?? '').trim();
+
+            let target = null;
+            if (rec.id !== undefined && rec.id !== null) {
+                target = drivers.find(d => String(d.id) === String(rec.id));
+            }
+            if (!target && name) {
+                target = drivers.find(d => d.name === name);
+            }
+
+            if (!target) return;
+
+            if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+                target.lat = lat;
+                target.lng = lng;
+                target.trail.push([lat, lng]);
+                if (target.trail.length > 60) target.trail.shift();
+            }
+
+            if (rec.speed !== undefined) target.speed = Number(rec.speed) || 0;
+            if (rec.deliveredOrders !== undefined || rec.delivered !== undefined) {
+                target.delivered = Number(rec.deliveredOrders ?? rec.delivered) || 0;
+            }
+            if (rec.remainingOrders !== undefined || rec.remaining !== undefined) {
+                target.remaining = Number(rec.remainingOrders ?? rec.remaining) || 0;
+            }
+
+            target.status = mapIncomingStatus(rec.status, target.speed);
+            target.hasLiveTelemetry = true;
+            target.lastUpdate = 'الآن';
+            updateDriverMarkerOnMap(target);
+        }
+
+        function pullLocalAndRemoteTelemetry() {
+            try {
+                drivers.forEach(d => {
+                    const selfRaw = localStorage.getItem(`waseet_self_captain_${d.id}`);
+                    if (selfRaw) {
+                        applyTelemetryRecord(JSON.parse(selfRaw));
+                    }
+                });
+            } catch (e) {}
+
+            if (!ENDPOINT_URL) return;
+
+            const sep = ENDPOINT_URL.includes('?') ? '&' : '?';
+            fetch(`${ENDPOINT_URL}${sep}action=getDrivers&t=${Date.now()}`, {
+                method: 'GET',
+                cache: 'no-store'
+            })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                const list = Array.isArray(data)
+                    ? data
+                    : (Array.isArray(data.drivers) ? data.drivers : (Array.isArray(data.data) ? data.data : []));
+                list.forEach(applyTelemetryRecord);
+                updateStats();
+                renderDriverList();
+            })
+            .catch(() => {});
+        }
+
+        if (syncChannel) {
+            syncChannel.onmessage = (event) => {
+                if (event.data && event.data.type === 'DRIVER_LOCATION_UPDATE') {
+                    applyTelemetryRecord(event.data.payload);
+                    updateStats();
+                    renderDriverList();
+                }
+            };
+        }
+
+        function getStatusConfig(status) {
+            switch (status) {
+                case 'active':
+                    return {
+                        label: 'نشط / في الطريق',
+                        shortLabel: 'نشط',
+                        colorHex: '#10b981',
+                        bgClass: 'bg-emerald-500',
+                        badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+                        pulse: true
+                    };
+                case 'stopped':
+                    return {
+                        label: 'متوقف / تسليم طلب',
+                        shortLabel: 'متوقف',
+                        colorHex: '#f59e0b',
+                        bgClass: 'bg-amber-500',
+                        badgeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+                        pulse: false
+                    };
+                default:
+                    return {
+                        label: 'غير متصل',
+                        shortLabel: 'غير متصل',
+                        colorHex: '#64748b',
+                        bgClass: 'bg-slate-500',
+                        badgeClass: 'bg-slate-700/50 text-slate-400 border-slate-600/40',
+                        pulse: false
+                    };
+            }
+        }
+
+        function buildKiaCargoTruckSvg() {
+            return `
+                <svg viewBox="0 0 48 28" width="32" height="20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect x="2" y="5" width="25" height="15" rx="2.5" fill="currentColor" fill-opacity="0.95"/>
+                    <path d="M27 8H37.5C39.2 8 40.6 9.1 41.2 10.7L44.2 17.5C44.5 18.2 44.5 19 44.2 19.7L43.8 20.5H27V8Z" fill="currentColor"/>
+                    <path d="M29.5 10.2H36.8C37.7 10.2 38.5 10.8 38.8 11.6L40.5 15.2H29.5V10.2Z" fill="#0f172a" fill-opacity="0.55"/>
+                    <circle cx="11" cy="21.5" r="4.2" fill="#0f172a" stroke="#ffffff" stroke-width="1.6"/>
+                    <circle cx="36.5" cy="21.5" r="4.2" fill="#0f172a" stroke="#ffffff" stroke-width="1.6"/>
+                </svg>
+            `;
+        }
+
+        function isDriverActivelyMoving(driver) {
+            return driver.status === 'active' && (Number(driver.speed) || 0) > 0;
+        }
+
+        function createMarkerHTML(driver) {
+            const cfg = getStatusConfig(driver.status);
+            const cleanName = driver.name.replace(/^كابتن الاستلام\s*/, '');
+            const shortName = cleanName.split(' ').slice(0, 2).join(' ');
+            const moving = isDriverActivelyMoving(driver);
+            const moveClass = moving ? 'kia-cargo-moving' : '';
+            const speedBadge = moving ? ` • ${driver.speed} كم/س` : '';
+
+            return `
+                <div class="kia-cargo-marker ${moveClass}" id="marker-el-${driver.id}">
+                    <div class="marker-label">
+                        <span class="w-2 h-2 rounded-full" style="background:${cfg.colorHex}"></span>
+                        <span>${shortName}${speedBadge}</span>
+                    </div>
+                    <div class="kia-cargo-box" style="background-color: ${cfg.colorHex};">
+                        ${buildKiaCargoTruckSvg()}
+                    </div>
+                </div>
+            `;
+        }
+
+        function createPopupHTML(driver) {
+            const cfg = getStatusConfig(driver.status);
+            const vehicleText = isDriverActivelyMoving(driver) ? 'سيارة حمل كيا (متحرك)' : 'سيارة توصيل';
+
+            return `
+                <div class="p-4 font-cairo">
+                    <div class="flex items-start justify-between gap-2 border-b border-slate-800 pb-3 mb-3">
+                        <div>
+                            <h3 class="font-extrabold text-base text-white">${driver.name}</h3>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${cfg.badgeClass}">
+                            ${cfg.shortLabel}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs mb-3 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
+                        <div>
+                            <span class="text-slate-400 block">السرعة الحالية</span>
+                            <span class="font-bold text-white text-sm">${driver.speed} كم/س</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">المركبة</span>
+                            <span class="font-bold text-slate-200">${vehicleText}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">الطلبات المسلمة</span>
+                            <span class="font-bold text-emerald-400">${driver.delivered} طلب</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">المتبقية</span>
+                            <span class="font-bold text-amber-400">${driver.remaining} طلبات</span>
+                        </div>
+                    </div>
+
+                    <div class="text-[11px] text-slate-400 mb-3 flex items-center justify-between">
+                        <span><i class="fa-solid fa-phone ml-1 text-slate-500"></i> ${driver.phone}</span>
+                        <span>تحديث: ${driver.lastUpdate}</span>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button onclick="toggleDriverTrail(${driver.id})" class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${driver.showTrail ? 'bg-rose-600 hover:bg-rose-500 text-white' : 'bg-sky-600 hover:bg-sky-500 text-white'}">
+                            <i class="fa-solid fa-route"></i>
+                            <span>${driver.showTrail ? 'إخفاء المسار' : 'عرض المسار'}</span>
+                        </button>
+                        <button onclick="sendDriverAlert(${driver.id})" class="py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 text-xs font-bold transition flex items-center justify-center gap-1" title="إرسال تنبيه للكابتن">
+                            <i class="fa-solid fa-bell"></i>
+                            <span>تنبيه</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initMapMarkers() {
+            drivers.forEach(driver => {
+                if (!markersMap[driver.id]) {
+                    const icon = L.divIcon({
+                        className: 'custom-driver-marker',
+                        html: createMarkerHTML(driver),
+                        iconSize: [0, 0],
+                        iconAnchor: [0, 0]
+                    });
+
+                    const marker = L.marker([driver.lat, driver.lng], { icon })
+                        .addTo(map)
+                        .bindPopup(() => createPopupHTML(driver), { maxWidth: 300 });
+
+                    marker.on('click', () => {
+                        selectDriver(driver.id, false);
+                    });
+
+                    markersMap[driver.id] = marker;
+                }
             });
         }
 
-        function ingestPayload(payload) {
-            if (!payload || !payload.id) return;
-            const prev = captainsState[payload.id] || {};
-            const nextTime = payload.lastUpdated ? new Date(payload.lastUpdated).getTime() : 0;
-            const prevTime = prev.lastUpdated ? new Date(prev.lastUpdated).getTime() : 0;
+        function updateDriverMarkerOnMap(driver) {
+            const marker = markersMap[driver.id];
+            if (!marker) return;
 
-            if (prevTime > 0 && nextTime > 0 && nextTime < prevTime) {
+            marker.setLatLng([driver.lat, driver.lng]);
+
+            const newIcon = L.divIcon({
+                className: 'custom-driver-marker',
+                html: createMarkerHTML(driver),
+                iconSize: [0, 0],
+                iconAnchor: [0, 0]
+            });
+            marker.setIcon(newIcon);
+
+            if (marker.isPopupOpen()) {
+                marker.getPopup().setContent(createPopupHTML(driver));
+            }
+
+            if (driver.showTrail) {
+                if (!polylinesMap[driver.id]) {
+                    polylinesMap[driver.id] = L.polyline(driver.trail, {
+                        color: '#38bdf8',
+                        weight: 4,
+                        opacity: 0.85,
+                        dashArray: '8, 6',
+                        lineJoin: 'round'
+                    }).addTo(map);
+                } else {
+                    polylinesMap[driver.id].setLatLngs(driver.trail);
+                }
+            } else if (polylinesMap[driver.id]) {
+                map.removeLayer(polylinesMap[driver.id]);
+                delete polylinesMap[driver.id];
+            }
+        }
+
+        function selectDriver(driverId, fly = true) {
+            selectedDriverId = driverId;
+            const driver = drivers.find(d => String(d.id) === String(driverId));
+            if (!driver) return;
+
+            driver.showTrail = true;
+            updateDriverMarkerOnMap(driver);
+
+            if (fly) {
+                map.flyTo([driver.lat, driver.lng], 15, {
+                    duration: 1.2
+                });
+                setTimeout(() => {
+                    if (markersMap[driver.id]) {
+                        markersMap[driver.id].openPopup();
+                    }
+                }, 400);
+            }
+
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar').classList.add('translate-x-full');
+            }
+
+            renderDriverList();
+        }
+
+        function toggleDriverTrail(driverId) {
+            const driver = drivers.find(d => String(d.id) === String(driverId));
+            if (!driver) return;
+            driver.showTrail = !driver.showTrail;
+            updateDriverMarkerOnMap(driver);
+            showToast(
+                driver.showTrail ? `تم تفعيل تتبّع مسار ${driver.name}` : `تم إخفاء مسار ${driver.name}`,
+                'info'
+            );
+        }
+
+        function clearAllTrails() {
+            drivers.forEach(d => {
+                d.showTrail = false;
+                if (polylinesMap[d.id]) {
+                    map.removeLayer(polylinesMap[d.id]);
+                    delete polylinesMap[d.id];
+                }
+            });
+            selectedDriverId = null;
+            renderDriverList();
+            showToast('تم مسح جميع خطوط المسارات من الخريطة', 'info');
+        }
+
+        function sendDriverAlert(driverId) {
+            const driver = drivers.find(d => String(d.id) === String(driverId));
+            if (!driver) return;
+            showToast(`تم إرسال إشعار متابعة فوري إلى هاتف الكابتن: ${driver.name}`, 'success');
+        }
+
+        function fitAllDrivers() {
+            const latLngs = drivers.map(d => [d.lat, d.lng]);
+            if (latLngs.length > 0) {
+                const bounds = L.latLngBounds(latLngs);
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+            }
+        }
+
+        function stepSimulation() {
+            if (!isSimulating) return;
+
+            drivers.forEach(driver => {
+                if (driver.hasLiveTelemetry) {
+                    updateDriverMarkerOnMap(driver);
+                    return;
+                }
+
+                if (Math.random() < 0.015) {
+                    if (driver.status === 'active') {
+                        driver.status = 'stopped';
+                        driver.speed = 0;
+                    } else if (driver.status === 'stopped') {
+                        driver.status = 'active';
+                        driver.speed = Math.floor(Math.random() * 25) + 28;
+                        if (driver.remaining > 0) {
+                            driver.delivered += 1;
+                            driver.remaining -= 1;
+                        }
+                    }
+                }
+
+                if (driver.status === 'active') {
+                    driver.heading += (Math.random() - 0.5) * 0.45;
+                    const stepDistance = 0.00028 * simSpeed;
+                    driver.lat += Math.cos(driver.heading) * stepDistance;
+                    driver.lng += Math.sin(driver.heading) * stepDistance;
+
+                    const speedDelta = Math.floor(Math.random() * 5) - 2;
+                    driver.speed = Math.max(22, Math.min(68, driver.speed + speedDelta));
+                    driver.lastUpdate = "الآن";
+
+                    driver.trail.push([driver.lat, driver.lng]);
+                    if (driver.trail.length > 60) {
+                        driver.trail.shift();
+                    }
+                } else if (driver.status === 'stopped') {
+                    driver.speed = 0;
+                    driver.lastUpdate = "منذ دقيقة";
+                } else {
+                    driver.speed = 0;
+                    driver.lastUpdate = "غير متصل";
+                }
+
+                updateDriverMarkerOnMap(driver);
+            });
+
+            updateStats();
+            renderDriverList();
+        }
+
+        function toggleSimulation() {
+            isSimulating = !isSimulating;
+            const btn = document.getElementById('simToggleBtn');
+            const icon = document.getElementById('simToggleIcon');
+            const text = document.getElementById('simToggleText');
+
+            if (isSimulating) {
+                btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                icon.className = 'fa-solid fa-pause';
+                text.textContent = 'إيقاف المحاكاة';
+                showToast('تم استئناف التتبّع والمحاكاة الحية', 'success');
+            } else {
+                btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                icon.className = 'fa-solid fa-play';
+                text.textContent = 'تشغيل المحاكاة';
+                showToast('تم إيقاف حركة المحاكاة مؤقتاً', 'warning');
+            }
+        }
+
+        function setSimSpeed(speed) {
+            simSpeed = speed;
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.classList.remove('bg-sky-600', 'text-white');
+                btn.classList.add('text-slate-300', 'hover:text-white');
+            });
+            const activeBtn = document.querySelector(`.speed-btn[data-speed="${speed}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-sky-600', 'text-white');
+                activeBtn.classList.remove('text-slate-300', 'hover:text-white');
+            }
+            showToast(`تم ضبط سرعة المحاكاة إلى ${speed}x`, 'info');
+        }
+
+        function updateStats() {
+            const total = drivers.length;
+            const active = drivers.filter(d => d.status === 'active').length;
+            const stopped = drivers.filter(d => d.status === 'stopped').length;
+            const totalOrders = drivers.reduce((sum, d) => sum + d.delivered, 0);
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statActive').textContent = active;
+            document.getElementById('statStopped').textContent = stopped;
+            document.getElementById('statOrders').textContent = totalOrders;
+        }
+
+        function setFilter(filterKey) {
+            currentFilter = filterKey;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-sky-600', 'text-white');
+                btn.classList.add('bg-slate-800', 'text-slate-300', 'hover:bg-slate-700');
+            });
+            const activeBtn = document.querySelector(`.filter-btn[data-filter="${filterKey}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-sky-600', 'text-white');
+                activeBtn.classList.remove('bg-slate-800', 'text-slate-300', 'hover:bg-slate-700');
+            }
+            renderDriverList();
+        }
+
+        function renderDriverList() {
+            const listEl = document.getElementById('driversList');
+            const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+
+            const filtered = drivers.filter(d => {
+                const matchesFilter = currentFilter === 'all' || d.status === currentFilter;
+                const matchesSearch = d.name.toLowerCase().includes(searchQuery);
+                return matchesFilter && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center py-10 text-slate-500">
+                        <i class="fa-solid fa-magnifying-glass text-2xl mb-2 block"></i>
+                        <p class="text-sm font-semibold">لا يوجد كباتن مطابقون لبحثك</p>
+                    </div>
+                `;
                 return;
             }
 
-            const nextLat = Number(payload.lat ?? prev.lat);
-            const nextLng = Number(payload.lng ?? prev.lng);
+            listEl.innerHTML = filtered.map(driver => {
+                const cfg = getStatusConfig(driver.status);
+                const isSelected = String(selectedDriverId) === String(driver.id);
 
-            captainsState[payload.id] = {
-                ...prev,
-                ...payload,
-                lat: Number.isFinite(nextLat) ? nextLat : prev.lat,
-                lng: Number.isFinite(nextLng) ? nextLng : prev.lng,
-                speed: Number(payload.speed ?? 0),
-                accuracy: Number(payload.accuracy ?? prev.accuracy ?? 10),
-                remainingOrders: Number(payload.remainingOrders ?? prev.remainingOrders ?? 0),
-                deliveredOrders: Number(payload.deliveredOrders ?? prev.deliveredOrders ?? 0),
-                isLive: Boolean(payload.isLive),
-                leftPage: Boolean(payload.leftPage),
-                awaySince: payload.awaySince ?? (payload.leftPage ? (prev.awaySince || payload.lastUpdated || new Date().toISOString()) : null),
-                lastUpdated: payload.lastUpdated || prev.lastUpdated || new Date().toISOString()
-            };
-
-            try {
-                localStorage.setItem(`waseet_self_captain_${payload.id}`, JSON.stringify(captainsState[payload.id]));
-            } catch (e) {}
-
-            renderDashboard();
-        }
-
-        async function pollJsonBin() {
-            if (!BIN_CFG.binId || isPollingJsonBin) return;
-            isPollingJsonBin = true;
-            try {
-                const url = `https://api.jsonbin.io/v3/b/${encodeURIComponent(BIN_CFG.binId)}/latest`;
-                const res = await fetch(url, {
-                    method: 'GET',
-                    headers: BIN_CFG.masterKey ? { 'X-Master-Key': BIN_CFG.masterKey } : {}
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-                const captainsObj = data && data.record && data.record.captains;
-                if (captainsObj && typeof captainsObj === 'object') {
-                    Object.values(captainsObj).forEach(item => {
-                        if (item && item.id) ingestPayload(item);
-                    });
-                }
-            } catch (e) {}
-            finally {
-                isPollingJsonBin = false;
-            }
-        }
-
-        function evaluateCaptainHealth(cap) {
-            const nowMs = Date.now();
-            const lastMs = cap.lastUpdated ? new Date(cap.lastUpdated).getTime() : 0;
-            const ageSec = lastMs ? Math.max(0, Math.floor((nowMs - lastMs) / 1000)) : null;
-
-            if (cap.leftPage) {
-                const awayMs = cap.awaySince ? new Date(cap.awaySince).getTime() : lastMs;
-                const awaySec = awayMs ? Math.max(0, Math.floor((nowMs - awayMs) / 1000)) : 0;
-                return {
-                    code: 'left_page',
-                    label: 'خرج من الرابط',
-                    detail: `غادر الصفحة منذ ${formatDuration(awaySec)}`,
-                    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/40',
-                    pinClass: 'pin-away',
-                    isAlert: true
-                };
-            }
-
-            const isStale = ageSec === null || ageSec > STALE_AFTER_SECONDS;
-            if (!cap.isLive || cap.status === 'offline' || isStale) {
-                return {
-                    code: 'stopped',
-                    label: 'توقف الموقع',
-                    detail: ageSec !== null ? `آخر تحديث منذ ${formatDuration(ageSec)}` : 'لم يبدأ البث بعد',
-                    badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/40',
-                    pinClass: 'pin-stopped',
-                    isAlert: true
-                };
-            }
-
-            return {
-                code: 'live',
-                label: 'يبث مباشر',
-                detail: `تحديث منذ ${formatDuration(ageSec)} • ${cap.speed} كم/س`,
-                badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
-                pinClass: 'pin-live',
-                isAlert: false
-            };
-        }
-
-        function formatDuration(sec) {
-            if (sec < 60) return `${sec} ث`;
-            const mins = Math.floor(sec / 60);
-            const rem = sec % 60;
-            return `${mins} د ${rem} ث`;
-        }
-
-        function setFilter(nextFilter) {
-            currentFilter = nextFilter;
-            ['all', 'live', 'alert'].forEach(key => {
-                const btn = document.getElementById(`flt-${key}`);
-                if (!btn) return;
-                btn.className = (key === nextFilter)
-                    ? 'px-3 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold'
-                    : 'px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold';
-            });
-            renderDashboard();
-        }
-
-        function renderDashboard() {
-            const list = Object.values(captainsState);
-            let liveCount = 0;
-            let leftPageCount = 0;
-            let stoppedCount = 0;
-            let totalDelivered = 0;
-            const alerts = [];
-
-            const listContainer = document.getElementById('captainsList');
-            listContainer.innerHTML = '';
-
-            list.forEach(cap => {
-                totalDelivered += Number(cap.deliveredOrders) || 0;
-                const health = evaluateCaptainHealth(cap);
-
-                if (health.code === 'live') liveCount++;
-                else if (health.code === 'left_page') {
-                    leftPageCount++;
-                    alerts.push({ cap, health });
-                } else {
-                    stoppedCount++;
-                    alerts.push({ cap, health });
-                }
-
-                if (markers[cap.id]) {
-                    markers[cap.id].setLatLng([cap.lat, cap.lng]);
-                    markers[cap.id].setIcon(L.divIcon({
-                        className: '',
-                        html: `<div class="captain-pin ${health.pinClass}">${cap.id}</div>`,
-                        iconSize: [34, 34],
-                        iconAnchor: [17, 17]
-                    }));
-                }
-
-                const showItem =
-                    currentFilter === 'all' ||
-                    (currentFilter === 'live' && health.code === 'live') ||
-                    (currentFilter === 'alert' && health.isAlert);
-
-                if (showItem) {
-                    const card = document.createElement('button');
-                    card.type = 'button';
-                    card.onclick = () => {
-                        if (fleetMap) fleetMap.setView([cap.lat, cap.lng], 15);
-                    };
-                    card.className = 'w-full text-right bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl p-2.5 transition flex items-center justify-between gap-2';
-                    card.innerHTML = `
-                        <div class="min-w-0">
-                            <div class="text-xs font-extrabold text-white truncate">${cap.id}. ${cap.name}</div>
-                            <div class="text-[11px] text-slate-400 truncate mt-0.5">${health.detail}</div>
+                return `
+                    <div onclick="selectDriver('${driver.id}', true)" class="p-3 rounded-xl border transition cursor-pointer ${isSelected ? 'bg-sky-950/40 border-sky-500/70 shadow-lg shadow-sky-950/30' : 'bg-slate-850/80 hover:bg-slate-800/90 border-slate-800'}">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-lg ${cfg.bgClass}/20 border border-${cfg.bgClass.replace('bg-', '')}/30 flex items-center justify-center text-white shrink-0" style="color: ${cfg.colorHex}">
+                                    <i class="fa-solid fa-car-side"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-white leading-tight">${driver.name}</h4>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${cfg.badgeClass}">
+                                ${cfg.shortLabel}
+                            </span>
                         </div>
-                        <div class="flex flex-col items-end shrink-0 gap-1">
-                            <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold border ${health.badgeClass}">${health.label}</span>
-                            <span class="text-[10px] text-slate-400">عهدة: ${cap.remainingOrders} | مُسلّم: ${cap.deliveredOrders}</span>
+
+                        <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                            <div class="flex items-center gap-3">
+                                <span title="الطلبات المسلمة / المتبقية">
+                                    <i class="fa-solid fa-box-check text-emerald-400 ml-1"></i>
+                                    <strong class="text-slate-200">${driver.delivered}</strong> / ${driver.remaining}
+                                </span>
+                                <span title="السرعة الحالية">
+                                    <i class="fa-solid fa-gauge-high text-sky-400 ml-1"></i>
+                                    <strong class="text-slate-200">${driver.speed}</strong> كم/س
+                                </span>
+                            </div>
+                            <span class="text-slate-500">${driver.lastUpdate}</span>
                         </div>
-                    `;
-                    listContainer.appendChild(card);
-                }
-            });
-
-            document.getElementById('statLive').textContent = liveCount;
-            document.getElementById('statLeftPage').textContent = leftPageCount;
-            document.getElementById('statStopped').textContent = stoppedCount;
-            document.getElementById('statDelivered').textContent = totalDelivered;
-            document.getElementById('lastSyncClock').textContent = new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-            const alertsSection = document.getElementById('alertsSection');
-            const alertsList = document.getElementById('alertsList');
-            const alertCountBadge = document.getElementById('alertCountBadge');
-
-            if (alerts.length > 0) {
-                alertsSection.classList.remove('hidden');
-                alertCountBadge.textContent = alerts.length;
-                alertsList.innerHTML = alerts.map(({ cap, health }) => `
-                    <div class="bg-slate-950/90 border border-amber-500/30 rounded-xl p-2.5 flex items-center justify-between gap-2">
-                        <div class="min-w-0">
-                            <div class="font-bold text-amber-200 truncate">${cap.name}</div>
-                            <div class="text-[11px] text-slate-300">${health.label} — ${health.detail}</div>
-                        </div>
-                        <button onclick="if(fleetMap) fleetMap.setView([${cap.lat}, ${cap.lng}], 15)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-white shrink-0">
-                            تحديد
-                        </button>
                     </div>
-                `).join('');
-            } else {
-                alertsSection.classList.add('hidden');
-                alertsList.innerHTML = '';
-            }
+                `;
+            }).join('');
         }
 
-        function initMonitoring() {
-            loadInitialState();
-            fleetMap = L.map('fleetMap', { center: [36.345, 43.155], zoom: 12 });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(fleetMap);
-
-            Object.values(captainsState).forEach(cap => {
-                const health = evaluateCaptainHealth(cap);
-                markers[cap.id] = L.marker([cap.lat, cap.lng], {
-                    icon: L.divIcon({
-                        className: '',
-                        html: `<div class="captain-pin ${health.pinClass}">${cap.id}</div>`,
-                        iconSize: [34, 34],
-                        iconAnchor: [17, 17]
-                    })
-                }).addTo(fleetMap).bindPopup(`<strong>${cap.name}</strong><br>${health.label}`);
-            });
-
-            if (syncChannel) {
-                syncChannel.onmessage = (event) => {
-                    if (event.data && event.data.type === 'DRIVER_LOCATION_UPDATE') {
-                        ingestPayload(event.data.payload);
-                    }
-                };
-            }
-
-            window.addEventListener('storage', (event) => {
-                if (event.key && event.key.startsWith('waseet_self_captain_') && event.newValue) {
-                    try {
-                        ingestPayload(JSON.parse(event.newValue));
-                    } catch (e) {}
-                }
-            });
-
-            renderDashboard();
-            pollJsonBin();
-            setInterval(pollJsonBin, 4000);
-            setInterval(renderDashboard, 5000);
+        function updateMosulClock() {
+            const now = new Date();
+            const options = { timeZone: 'Asia/Baghdad', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+            document.getElementById('mosulClock').textContent = now.toLocaleTimeString('en-US', options);
         }
 
-        window.addEventListener('DOMContentLoaded', initMonitoring);
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200',
+                warning: 'bg-amber-950/95 border-amber-500/50 text-amber-200',
+                info: 'bg-slate-900/95 border-sky-500/50 text-sky-200'
+            };
+
+            const icons = {
+                success: 'fa-circle-check text-emerald-400',
+                warning: 'fa-triangle-exclamation text-amber-400',
+                info: 'fa-circle-info text-sky-400'
+            };
+
+            toast.className = `px-4 py-3 rounded-xl border backdrop-blur-md shadow-2xl flex items-center gap-3 text-xs font-bold transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type]}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type]} text-base"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        document.getElementById('toggleSidebarBtn').addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('translate-x-full');
+        });
+
+        window.onload = function () {
+            initMapMarkers();
+            pullLocalAndRemoteTelemetry();
+            updateStats();
+            renderDriverList();
+            updateMosulClock();
+
+            setInterval(updateMosulClock, 1000);
+            setInterval(stepSimulation, 1000);
+            setInterval(pullLocalAndRemoteTelemetry, 4000);
+        };
     </script>
+
+    <!-- بوابة دخول قسم المتابعة -->
+    <div id="monitoringGateModal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-sky-600/20 border border-sky-500/40 flex items-center justify-center text-sky-400">
+                    <i class="fa-solid fa-user-shield text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-extrabold text-white">قسم المتابعة فقط</h2>
+                    <p class="text-xs text-slate-400">مراقبة مواقع وحالات كباتن الاستلام</p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+                هذه اللوحة مخصصة لموظفي قسم المتابعة فقط ولا تظهر للكباتن. اضغط دخول لفتح خريطة المتابعة المباشرة.
+            </p>
+            <button onclick="unlockMonitoringView()" class="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-sm font-extrabold transition">
+                دخول إلى لوحة المتابعة
+            </button>
+        </div>
+    </div>
+    <script>
+        function unlockMonitoringView() {
+            sessionStorage.setItem('waseet_monitoring_auth', '1');
+            document.getElementById('monitoringGateModal').classList.add('hidden');
+        }
+        window.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('waseet_monitoring_auth') === '1') {
+                document.getElementById('monitoringGateModal').classList.add('hidden');
+            }
+        });
+    </script>
+
 </body>
 </html>
