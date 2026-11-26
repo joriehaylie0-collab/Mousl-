@@ -67,16 +67,7 @@
         </div>
 
         <div class="flex items-center gap-2 sm:gap-3">
-            <button id="simToggleBtn" onclick="toggleSimulation()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold transition shadow-md shadow-emerald-950/40">
-                <i id="simToggleIcon" class="fa-solid fa-pause"></i>
-                <span id="simToggleText" class="hidden md:inline">إيقاف المحاكاة</span>
-            </button>
-            <div class="hidden sm:flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
-                <span class="text-xs text-slate-400 px-2">السرعة:</span>
-                <button onclick="setSimSpeed(1)" data-speed="1" class="speed-btn px-2 py-0.5 rounded text-xs font-bold bg-sky-600 text-white transition">1x</button>
-                <button onclick="setSimSpeed(2)" data-speed="2" class="speed-btn px-2 py-0.5 rounded text-xs font-bold text-slate-300 hover:text-white transition">2x</button>
-                <button onclick="setSimSpeed(5)" data-speed="5" class="speed-btn px-2 py-0.5 rounded text-xs font-bold text-slate-300 hover:text-white transition">5x</button>
-            </div>
+            
             <button onclick="fitAllDrivers()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-semibold transition" title="إظهار جميع الكباتن على الخريطة">
                 <i class="fa-solid fa-expand text-sky-400"></i>
                 <span class="hidden xl:inline">عرض الكل</span>
@@ -460,6 +451,7 @@
         }
 
         function stepSimulation() {
+    return; // إيقاف المحاكاة نهائياً
             if (!isSimulating) return;
             drivers.forEach(driver => {
                 if (driver.hasLiveTelemetry) { updateDriverMarkerOnMap(driver); return; }
