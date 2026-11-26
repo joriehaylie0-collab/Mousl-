@@ -189,7 +189,7 @@
               ...base,
               ...item,
               id,
-              name: item.name || base.name,
+              name: base.name,
               lat: Number(item.lat || base.lat),
               lng: Number(item.lng || base.lng),
               speed: Number(item.speed || 0),
