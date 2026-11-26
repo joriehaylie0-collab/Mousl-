@@ -14,7 +14,7 @@
       padding: 16px;
     }
     .card {
-      max-width: 520px;
+      max-width: 540px;
       margin: 0 auto;
       background: #1e293b;
       border: 1px solid #334155;
@@ -34,6 +34,12 @@
       color: #f8fafc;
       font-size: 0.95rem;
       margin-bottom: 14px;
+    }
+    input[readonly], .locked-field {
+      background: #131c2e;
+      color: #e2e8f0;
+      border-color: #334155;
+      cursor: not-allowed;
     }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
@@ -56,7 +62,7 @@
       background: #0f172a;
       border: 1px solid #334155;
       font-size: 0.88rem;
-      line-height: 1.6;
+      line-height: 1.65;
     }
     .badge {
       display: inline-block;
@@ -74,10 +80,18 @@
 <body>
   <div class="card">
     <h1>واجهة الكابتن المباشرة</h1>
-    <p class="subtitle">إرسال الموقع والحالة فورياً إلى غرفة المتابعة</p>
+    <p class="subtitle">اسم الكابتن ثابت وغير قابل للتعديل من قبل الكابتن</p>
 
-    <label for="captainSelect">اختر الكابتن</label>
-    <select id="captainSelect"></select>
+    <div class="row">
+      <div>
+        <label for="captainSlotSelect">اختر الكابتن</label>
+        <select id="captainSlotSelect"></select>
+      </div>
+      <div>
+        <label for="captainLockedName">اسم الكابتن (ثابت)</label>
+        <input id="captainLockedName" type="text" class="locked-field" readonly aria-readonly="true" />
+      </div>
+    </div>
 
     <label for="statusSelect">حالة العمل</label>
     <select id="statusSelect">
@@ -105,6 +119,7 @@
 
     <div class="status-box" id="statusBox">
       الحالة: <span class="badge offline" id="liveBadge">متوقف</span><br />
+      الكابتن: <span id="activeNameText">—</span><br />
       الإحداثيات: <span id="coordsText">بانتظار تحديد الموقع...</span><br />
       المزامنة السحابية: <span id="syncText" class="sync-ok">جاهز</span>
     </div>
@@ -118,6 +133,7 @@
       pollIntervalMs: 5000
     };
 
+    // أسماء الكباتن الثابتة (14 كابتن) - غير قابلة للتعديل من الواجهة
     const CAPTAINS = Array.from({ length: 14 }, (_, idx) => ({
       id: idx + 1,
       name: `كابتن ${idx + 1}`
@@ -126,13 +142,15 @@
     const LOCAL_KEY = "waseet_fleet_captains_v1";
     const channel = ("BroadcastChannel" in window) ? new BroadcastChannel("waseet_fleet_channel") : null;
 
-    const captainSelect = document.getElementById("captainSelect");
+    const captainSlotSelect = document.getElementById("captainSlotSelect");
+    const captainLockedName = document.getElementById("captainLockedName");
     const statusSelect = document.getElementById("statusSelect");
     const remainingInput = document.getElementById("remainingOrders");
     const deliveredInput = document.getElementById("deliveredOrders");
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
     const liveBadge = document.getElementById("liveBadge");
+    const activeNameText = document.getElementById("activeNameText");
     const coordsText = document.getElementById("coordsText");
     const syncText = document.getElementById("syncText");
 
@@ -141,13 +159,25 @@
     let isStreaming = false;
     let currentRecord = null;
 
-    function initSelect() {
+    function getSelectedCaptain() {
+      const id = Number(captainSlotSelect.value);
+      return CAPTAINS.find(c => c.id === id) || { id, name: `كابتن ${id}` };
+    }
+
+    function syncLockedCaptainDisplay() {
+      const cap = getSelectedCaptain();
+      captainLockedName.value = cap.name;
+      activeNameText.textContent = cap.name;
+    }
+
+    function initSlots() {
       CAPTAINS.forEach(c => {
         const opt = document.createElement("option");
         opt.value = c.id;
-        opt.textContent = c.name;
-        captainSelect.appendChild(opt);
+        opt.textContent = `رقم ${c.id}`;
+        captainSlotSelect.appendChild(opt);
       });
+      syncLockedCaptainDisplay();
     }
 
     function readLocalCaptains() {
@@ -224,13 +254,12 @@
     }
 
     function buildRecord(lat, lng, speed, accuracy, liveFlag, leftFlag) {
-      const id = Number(captainSelect.value);
-      const capObj = CAPTAINS.find(c => c.id === id) || { id, name: `كابتن ${id}` };
-      const prev = currentRecord && Number(currentRecord.id) === id ? currentRecord : null;
+      const cap = getSelectedCaptain();
+      const prev = currentRecord && Number(currentRecord.id) === cap.id ? currentRecord : null;
 
       return {
-        id: capObj.id,
-        name: capObj.name,
+        id: cap.id,
+        name: cap.name,
         lat: Number(lat),
         lng: Number(lng),
         speed: Number(speed || 0),
@@ -304,6 +333,8 @@
       pushUpdate(lat, lng, 0, 15, false, false);
     }
 
+    captainSlotSelect.addEventListener("change", syncLockedCaptainDisplay);
+
     document.addEventListener("visibilitychange", () => {
       if (!isStreaming || !currentRecord) return;
       pushUpdate(
@@ -319,7 +350,7 @@
     startBtn.addEventListener("click", startStreaming);
     stopBtn.addEventListener("click", stopStreaming);
 
-    initSelect();
+    initSlots();
   </script>
 </body>
 </html>
