@@ -1,625 +1,714 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>الوسيط — تطبيق الكابتن للمتابعة المباشرة</title>
-  <style>
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif; }
-    body {
-      margin: 0;
-      background: #070b14;
-      color: #f1f5f9;
-      min-height: 100vh;
-      padding: 14px;
-    }
-    .container {
-      max-width: 560px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .topbar {
-      background: #0f172a;
-      border: 1px solid #1e293b;
-      border-radius: 14px;
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .brand { display: flex; align-items: center; gap: 10px; }
-    .brand-icon {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      background: rgba(16, 185, 129, 0.16);
-      border: 1px solid rgba(16, 185, 129, 0.35);
-      display: grid;
-      place-items: center;
-      font-size: 1.15rem;
-    }
-    .brand-title { font-weight: 800; font-size: 0.98rem; color: #f8fafc; }
-    .brand-sub { font-size: 0.78rem; color: #94a3b8; }
-    .top-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .chip {
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid #334155;
-      background: #1e293b;
-      color: #cbd5e1;
-    }
-    .chip-off { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.35); color: #f87171; }
-    .chip-live { background: rgba(16,185,129,0.16); border-color: rgba(16,185,129,0.4); color: #34d399; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الوسيط — تطبيق كابتن الاستلام</title>
 
-    .panel {
-      background: #0f172a;
-      border: 1px solid #1e293b;
-      border-radius: 16px;
-      padding: 16px;
-    }
-    .panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-      gap: 8px;
-    }
-    .panel-title { font-size: 0.92rem; font-weight: 800; color: #e2e8f0; margin: 0; }
-    .panel-hint { font-size: 0.76rem; color: #94a3b8; }
-
-    .locked-box {
-      background: #080d19;
-      border: 1px solid #1e293b;
-      border-radius: 14px;
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-    .locked-tag { font-size: 0.74rem; color: #94a3b8; margin-bottom: 2px; }
-    .locked-name { font-size: 1.05rem; font-weight: 800; color: #f8fafc; }
-    .lock-pill {
-      background: rgba(16, 185, 129, 0.14);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.35);
-      border-radius: 999px;
-      padding: 5px 11px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 12px 14px;
-      font-size: 0.94rem;
-      font-weight: 800;
-      cursor: pointer;
-      transition: transform 0.1s ease, opacity 0.15s ease;
-    }
-    button:active { transform: scale(0.99); }
-    .btn-start { background: #10b981; color: #052e16; }
-    .btn-stop { background: #3b0d14; color: #fda4af; border: 1px solid #881337; }
-
-    .notice-box {
-      background: rgba(245, 158, 11, 0.08);
-      border: 1px solid rgba(245, 158, 11, 0.28);
-      border-radius: 16px;
-      padding: 14px 16px;
-      font-size: 0.83rem;
-      line-height: 1.65;
-      color: #fde68a;
-    }
-    .notice-title { font-weight: 800; color: #fbbf24; margin-bottom: 4px; }
-
-    .seg-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-    .seg-btn {
-      background: #1e293b;
-      color: #cbd5e1;
-      border: 1px solid #334155;
-      padding: 10px;
-      border-radius: 10px;
-      font-size: 0.88rem;
-      font-weight: 700;
-    }
-    .seg-btn.active {
-      background: #0284c7;
-      color: #ffffff;
-      border-color: #38bdf8;
-    }
-    .mode-desc { font-size: 0.8rem; color: #94a3b8; line-height: 1.55; margin: 0; }
-
-    .status-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
-    .st-btn {
-      background: #1e293b;
-      color: #e2e8f0;
-      border: 1px solid #334155;
-      padding: 10px 8px;
-      border-radius: 10px;
-      font-size: 0.86rem;
-      font-weight: 700;
-    }
-    .st-btn.active-road { background: #10b981; color: #052e16; border-color: #34d399; }
-    .st-btn.active-stop { background: #334155; color: #f8fafc; border-color: #64748b; }
-    .st-btn.active-off { background: #7f1d1d; color: #fecaca; border-color: #ef4444; }
-
-    .orders-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 6px; }
-    input {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #334155;
-      background: #080d19;
-      color: #f8fafc;
-      font-size: 0.95rem;
-    }
-    .telemetry {
-      font-size: 0.8rem;
-      color: #94a3b8;
-      line-height: 1.65;
-      border-top: 1px solid #1e293b;
-      margin-top: 12px;
-      padding-top: 10px;
-    }
-    .ok-txt { color: #34d399; font-weight: 700; }
-    .warn-txt { color: #fbbf24; font-weight: 700; }
-  </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+        }
+        #miniMap {
+            height: 220px;
+            width: 100%;
+            border-radius: 14px;
+            z-index: 10;
+        }
+        .leaflet-control-attribution {
+            display: none !important;
+        }
+    </style>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#090d16">
 </head>
-<body>
-  <div class="container">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-icon">🚚</div>
-        <div>
-          <div class="brand-title">الوسيط — تطبيق الكابتن</div>
-          <div class="brand-sub" id="headerSub">كابتن الاستلام مصطفى محمد</div>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+
+    <!-- الشريط العلوي -->
+    <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between gap-2 sticky top-0 z-30">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-truck text-white text-sm"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-sm sm:text-base font-extrabold text-white truncate">الوسيط — تطبيق كابتن الاستلام</h1>
+                <p id="activeCaptainHeader" class="text-[11px] text-slate-400 truncate">ثبّت حساب الكابتن لبدء البث</p>
+            </div>
         </div>
-      </div>
-      <div class="top-badges">
-        <span class="chip chip-off" id="liveChip">متوقف</span>
-        <span class="chip">بث للمتابعة فقط</span>
-      </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+            <span id="streamStatusBadge" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                متوقف
+            </span>
+            <span class="px-2.5 py-1 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-300 text-[11px] font-bold">
+                بث للمتابعة فقط
+            </span>
+        </div>
     </header>
 
-    <section class="panel">
-      <div class="panel-header">
-        <h2 class="panel-title">حساب كابتن الاستلام المثبّت</h2>
-        <span class="panel-hint" id="wakeLockState">إبقاء الشاشة: تلقائي</span>
-      </div>
+    <main class="flex-1 max-w-xl w-full mx-auto p-4 space-y-4">
 
-      <div class="locked-box">
-        <div>
-          <div class="locked-tag">حساب مثبت ومقفل</div>
-          <div class="locked-name" id="lockedCaptainName">كابتن الاستلام مصطفى محمد</div>
+        <!-- تثبيت حساب الكابتن لمرة واحدة -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold text-emerald-400">
+                    <i class="fa-solid fa-shield-halved ml-1"></i>
+                    حساب كابتن الاستلام المثبّت
+                </span>
+                <span id="wakeLockIndicator" class="text-[11px] text-slate-400">إبقاء الشاشة: تلقائي</span>
+            </div>
+
+            <!-- شاشة الاختيار والتثبيت لأول مرة فقط -->
+            <div id="setupAccountBox" class="space-y-2.5">
+                <p class="text-[11px] text-slate-400">
+                    اختر اسمك مرة واحدة فقط لتثبيته على هذا الجهاز. بعد التثبيت سيظهر حسابك فقط ولن يُسمح بتغييره من داخل الواجهة.
+                </p>
+                <select id="captainSelect" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none">
+                    <!-- يتم تعبئتها تلقائياً -->
+                </select>
+                <button id="lockCaptainBtn" onclick="confirmAndLockCaptain()" class="w-full py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>تثبيت حسابي بشكل دائم</span>
+                </button>
+            </div>
+
+            <!-- عرض الحساب المثبّت بعد القفل -->
+            <div id="lockedAccountBox" class="hidden bg-slate-950 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                    <span class="text-[10px] text-emerald-400 font-bold block">حساب مثبّت ومقفل</span>
+                    <div id="lockedCaptainNameText" class="text-sm font-black text-white truncate">—</div>
+                </div>
+                <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold shrink-0">
+                    <i class="fa-solid fa-lock ml-1"></i> مثبت
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button id="startStreamBtn" onclick="startLiveTracking()" class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                    <span>بدء البث المباشر</span>
+                </button>
+                <button id="stopStreamBtn" onclick="stopLiveTracking()" class="py-2.5 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-stop"></i>
+                    <span>إيقاف البث</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- تنبيه الاستخدام الطبيعي للهاتف -->
+        <div id="backgroundHintBanner" class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 text-xs text-amber-200 flex items-start gap-2.5">
+            <i class="fa-solid fa-circle-info text-amber-400 mt-0.5 shrink-0"></i>
+            <div>
+                <p class="font-bold text-amber-300">ملاحظة مهمة حول استخدام الهاتف أثناء البث:</p>
+                <p class="text-[11px] text-amber-100/90 mt-0.5 leading-relaxed">
+                    لأسباب أمان نظام الهاتف (أندرويد و iOS)، قد يجمّد المتصفح قراءة GPS في الخلفية إذا غادر الكابتن الصفحة أو أغلق الشاشة لفترة طويلة. يحدّث التطبيق موقع الكابتن فوراً وبشكل تلقائي بمجرد العودة أو التنقل بين التطبيقات، ويبقي آخر موقع موثّق ظاهراً على الخريطة.
+                </p>
+            </div>
         </div>
-        <span class="lock-pill">🔒 مثبّت</span>
-      </div>
 
-      <div class="btn-row">
-        <button type="button" class="btn-start" id="startBtn">بدء البث المباشر</button>
-        <button type="button" class="btn-stop" id="stopBtn">■ إيقاف البث</button>
-      </div>
-    </section>
+        <!-- وضع تحديد الموقع والسرعة -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-extrabold text-sky-400">
+                    <i class="fa-solid fa-satellite ml-1"></i>
+                    مصدر الموقع
+                </span>
+                <div class="flex items-center gap-1.5 text-xs">
+                    <button onclick="setMode('gps')" id="mode-gps" class="px-3 py-1 rounded-lg font-bold bg-sky-600 text-white">GPS حقيقي</button>
+                    <button onclick="setMode('sim')" id="mode-sim" class="px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300">محاكاة حركة</button>
+                </div>
+            </div>
+            <p id="gpsHintText" class="text-[11px] text-slate-400">
+                يقرأ إحداثيات الهاتف الفعلية وسرعته ويرسلها مباشرة إلى قسم المتابعة فقط دون إظهار مواقع الكباتن الآخرين.
+            </p>
+        </section>
 
-    <div class="notice-box">
-      <div class="notice-title">ملاحظة مهمة حول استخدام الهاتف أثناء البث:</div>
-      لأسباب أمان نظام الهاتف (أندرويد و iOS)، قد يجمّد المتصفح قراءة GPS في الخلفية إذا غادر الكابتن الصفحة أو أغلق الشاشة لفترة طويلة. يحدّث التطبيق موقع الكابتن فوراً وبشكل تلقائي بمجرد العودة أو التنقّل بين التطبيقات، ويبقي آخر موقع موثّق ظاهراً على الخريطة.
-    </div>
+        <!-- الحالة وعداد الطلبات -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <span class="text-xs font-extrabold text-amber-400 block">
+                <i class="fa-solid fa-sliders ml-1"></i>
+                حالة الكابتن والطلبات
+            </span>
 
-    <section class="panel">
-      <div class="panel-header">
-        <h2 class="panel-title">مصدر الموقع</h2>
-      </div>
-      <div class="seg-group">
-        <button type="button" class="seg-btn active" id="gpsModeBtn">GPS حقيقي</button>
-        <button type="button" class="seg-btn" id="simModeBtn">محاكاة حركة</button>
-      </div>
-      <p class="mode-desc" id="modeDesc">
-        يقرأ إحداثيات الهاتف الفعلية وسرعته ويرسلها مباشرة إلى قسم المتابعة فقط دون إظهار مواقع الكباتن الآخرين.
-      </p>
-    </section>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+                <button onclick="setCaptainStatus('active')" id="st-active" class="py-2 px-2 rounded-xl font-bold bg-emerald-600 text-white">في الطريق</button>
+                <button onclick="setCaptainStatus('stopped')" id="st-stopped" class="py-2 px-2 rounded-xl font-bold bg-slate-800 text-slate-300">متوقف</button>
+                <button onclick="setCaptainStatus('offline')" id="st-offline" class="py-2 px-2 rounded-xl font-bold bg-slate-800 text-slate-300">غير متصل</button>
+            </div>
 
-    <section class="panel">
-      <div class="panel-header">
-        <h2 class="panel-title">حالة الكابتن والطلبات</h2>
-      </div>
+            <div class="grid grid-cols-2 gap-3 pt-1">
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                    <span class="text-[11px] text-slate-400 block">طلبات في العهدة</span>
+                    <div class="flex items-center justify-between mt-1.5">
+                        <button onclick="adjustRemaining(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">-</button>
+                        <span id="remainingCount" class="text-lg font-black text-amber-400">0</span>
+                        <button onclick="adjustRemaining(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">+</button>
+                    </div>
+                </div>
 
-      <div class="status-3">
-        <button type="button" class="st-btn active-road" data-status="on_way" id="stOnWay">في الطريق</button>
-        <button type="button" class="st-btn" data-status="stopped" id="stStopped">متوقف</button>
-        <button type="button" class="st-btn" data-status="offline" id="stOffline">غير متصل</button>
-      </div>
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                    <span class="text-[11px] text-slate-400 block">الطلبات المُسلّمة</span>
+                    <div class="flex items-center justify-between mt-1.5">
+                        <button onclick="adjustDelivered(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">-</button>
+                        <span id="deliveredCount" class="text-lg font-black text-emerald-400">0</span>
+                        <button onclick="adjustDelivered(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">+</button>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-      <div class="orders-grid">
-        <div>
-          <label for="remainingInput">الطلبات المتبقية</label>
-          <input id="remainingInput" type="number" min="0" value="0" />
-        </div>
-        <div>
-          <label for="deliveredInput">الطلبات المسلّمة</label>
-          <input id="deliveredInput" type="number" min="0" value="0" />
-        </div>
-      </div>
+        <!-- الخريطة المصغرة وسجل الإحداثيات -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between text-xs">
+                <span class="font-extrabold text-white">معاينة الموقع الحالي</span>
+                <span id="telemetrySummary" class="font-mono text-sky-400">السرعة: 0 كم/س</span>
+            </div>
+            <div id="miniMap"></div>
+            <div id="logBox" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-[11px] text-slate-400 font-mono space-y-1 max-h-28 overflow-y-auto">
+                <div>جاهز لتثبيت الحساب وبدء البث المباشر للكابتن.</div>
+            </div>
+        </section>
 
-      <div class="telemetry">
-        الإحداثيات: <span id="coordsVal">بانتظار البث...</span><br />
-        حالة البث المحلي: <span id="localVal" class="ok-txt">جاهز (مرتبط بـ JSONBin)</span>
-      </div>
-    </section>
-  </div>
+    </main>
 
-  <script>
-    const CONFIG = {
-      binId: "6b07872413d2c8610b12db5e",
-      masterKey: "$2a$10$qOS1lm7Vo1tq9r.w/vTMoOnHrSJ7MKisq.6csaRUyFQ/7vRaV4PfS",
-      captain: { id: 1, name: "كابتن الاستلام مصطفى محمد" },
-      center: { lat: 36.3489, lng: 43.1577 },
-      intervalMs: 3000,
-      minPushGapMs: 2500
-    };
+    <script src="config.js" onerror="window.__MISSING_CONFIG__ = true;"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    const LOCAL_KEY = "waseet_fleet_captains_v1";
-    const channel = ("BroadcastChannel" in window) ? new BroadcastChannel("waseet_fleet_channel") : null;
+    <script>
+        const CAPTAINS_LIST = [
+            { id: 1, name: "كابتن الاستلام مصطفى محمد", lat: 36.3325, lng: 43.1120, delivered: 14, remaining: 3 },
+            { id: 2, name: "كابتن الاستلام محمد طارق", lat: 36.3640, lng: 43.1580, delivered: 19, remaining: 2 },
+            { id: 3, name: "كابتن الاستلام محمد زياد", lat: 36.3785, lng: 43.1490, delivered: 11, remaining: 4 },
+            { id: 4, name: "كابتن الاستلام احمد فراس", lat: 36.3690, lng: 43.1820, delivered: 16, remaining: 1 },
+            { id: 5, name: "كابتن الاستلام عجيب موفق", lat: 36.3575, lng: 43.1735, delivered: 22, remaining: 5 },
+            { id: 6, name: "كابتن الاستلام ريان سالم", lat: 36.3340, lng: 43.2080, delivered: 9, remaining: 4 },
+            { id: 7, name: "كابتن الاستلام عمار هاشم", lat: 36.3195, lng: 43.1280, delivered: 15, remaining: 2 },
+            { id: 8, name: "كابتن الاستلام يوسف فتح الله", lat: 36.3380, lng: 43.1365, delivered: 18, remaining: 3 },
+            { id: 9, name: "كابتن الاستلام عبدالله تحسين", lat: 36.3485, lng: 43.1645, delivered: 13, remaining: 2 },
+            { id: 10, name: "كابتن الاستلام احمد علي", lat: 36.1580, lng: 43.2520, delivered: 8, remaining: 3 },
+            { id: 11, name: "كابتن الاستلام محمد قحطان", lat: 35.8020, lng: 43.2890, delivered: 10, remaining: 0 },
+            { id: 12, name: "كابتن الاستلام عمر مازن", lat: 36.3420, lng: 43.1960, delivered: 17, remaining: 4 },
+            { id: 13, name: "كابتن الاستلام مصطفى مؤيد", lat: 36.3510, lng: 43.1855, delivered: 12, remaining: 3 },
+            { id: 14, name: "كابتن الاستلام قصي محمد", lat: 36.3855, lng: 43.1660, delivered: 21, remaining: 1 }
+        ];
 
-    const liveChip = document.getElementById("liveChip");
-    const wakeLockState = document.getElementById("wakeLockState");
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
-    const gpsModeBtn = document.getElementById("gpsModeBtn");
-    const simModeBtn = document.getElementById("simModeBtn");
-    const modeDesc = document.getElementById("modeDesc");
-    const stOnWay = document.getElementById("stOnWay");
-    const stStopped = document.getElementById("stStopped");
-    const stOffline = document.getElementById("stOffline");
-    const remainingInput = document.getElementById("remainingInput");
-    const deliveredInput = document.getElementById("deliveredInput");
-    const coordsVal = document.getElementById("coordsVal");
-    const localVal = document.getElementById("localVal");
+        const LOCKED_CAPTAIN_KEY = 'waseet_locked_captain_id_v1';
 
-    let isStreaming = false;
-    let sourceMode = "gps";
-    let workStatus = "on_way";
-    let watchId = null;
-    let loopTimer = null;
-    let wakeLockSentinel = null;
-    let currentRecord = null;
-    let simStep = 0;
-    let lastCloudPushAt = 0;
-    let pendingCloudTimer = null;
+        const JSONBIN_CONFIG = {
+            binId: '6b07872413d2c8610b12db5e',
+            masterKey: '$2a$10$qOS1lm7Vo1tq9r.w/vTMoOnHrSJ7MKisq.6csaRUyFQ/7vRaV4PfS'
+        };
 
-    function setSourceMode(mode) {
-      sourceMode = mode;
-      gpsModeBtn.classList.toggle("active", mode === "gps");
-      simModeBtn.classList.toggle("active", mode === "sim");
-      modeDesc.textContent = mode === "gps"
-        ? "يقرأ إحداثيات الهاتف الفعلية وسرعته ويرسلها مباشرة إلى قسم المتابعة فقط دون إظهار مواقع الكباتن الآخرين."
-        : "يولّد حركة تجريبية حول الموصل ويرسلها إلى قسم المتابعة لاختبار الخريطة والتحديث الحي.";
-      if (isStreaming) {
-        restartLocationFeed();
-      }
-    }
-
-    function setWorkStatus(nextStatus) {
-      workStatus = nextStatus;
-      stOnWay.className = "st-btn" + (nextStatus === "on_way" ? " active-road" : "");
-      stStopped.className = "st-btn" + (nextStatus === "stopped" ? " active-stop" : "");
-      stOffline.className = "st-btn" + (nextStatus === "offline" ? " active-off" : "");
-      if (isStreaming) {
-        const base = currentRecord || { lat: CONFIG.center.lat, lng: CONFIG.center.lng, speed: 0, accuracy: 15 };
-        sendSnapshot(base.lat, base.lng, base.speed, base.accuracy, nextStatus !== "offline", document.hidden, true);
-      }
-    }
-
-    async function requestWakeLock() {
-      try {
-        if ("wakeLock" in navigator && navigator.wakeLock.request) {
-          wakeLockSentinel = await navigator.wakeLock.request("screen");
-          wakeLockState.textContent = "إبقاء الشاشة: نشط";
-        }
-      } catch (_) {
-        wakeLockState.textContent = "إبقاء الشاشة: تلقائي";
-      }
-    }
-
-    async function releaseWakeLock() {
-      try {
-        if (wakeLockSentinel) {
-          await wakeLockSentinel.release();
-          wakeLockSentinel = null;
-        }
-      } catch (_) {}
-      wakeLockState.textContent = "إبقاء الشاشة: تلقائي";
-    }
-
-    function saveLocal(record) {
-      try {
-        const raw = localStorage.getItem(LOCAL_KEY);
-        const list = raw ? JSON.parse(raw) : [];
-        const arr = Array.isArray(list) ? list : [];
-        const idx = arr.findIndex(x => Number(x.id) === CONFIG.captain.id);
-        if (idx >= 0) arr[idx] = record;
-        else arr.push(record);
-        localStorage.setItem(LOCAL_KEY, JSON.stringify(arr));
-        if (channel) channel.postMessage({ type: "update", captains: arr });
-      } catch (_) {}
-    }
-
-    async function flushCloudRecord(record) {
-      const url = `https://api.jsonbin.io/v3/b/${encodeURIComponent(CONFIG.binId)}`;
-      lastCloudPushAt = Date.now();
-      try {
-        let captains = [];
-        const getRes = await fetch(`${url}/latest`, {
-          method: "GET",
-          headers: { "X-Master-Key": CONFIG.masterKey }
-        });
-        if (getRes.ok) {
-          const data = await getRes.json();
-          if (data && data.record && Array.isArray(data.record.captains)) {
-            captains = data.record.captains;
-          }
+        function resolveEndpoint() {
+            if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.ENDPOINT) return APP_CONFIG.ENDPOINT;
+            if (typeof CONFIG !== 'undefined' && CONFIG.ENDPOINT) return CONFIG.ENDPOINT;
+            if (typeof ENDPOINT !== 'undefined' && typeof ENDPOINT === 'string') return ENDPOINT;
+            if (window.ENDPOINT) return window.ENDPOINT;
+            return '';
         }
 
-        const idx = captains.findIndex(x => Number(x.id) === CONFIG.captain.id);
-        if (idx >= 0) captains[idx] = record;
-        else captains.push(record);
+        function resolveJsonBinConfig() {
+            const binId =
+                (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.JSONBIN_BIN_ID || APP_CONFIG.BIN_ID)) ||
+                (typeof CONFIG !== 'undefined' && (CONFIG.JSONBIN_BIN_ID || CONFIG.BIN_ID)) ||
+                window.JSONBIN_BIN_ID ||
+                JSONBIN_CONFIG.binId;
 
-        const putRes = await fetch(url, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Master-Key": CONFIG.masterKey
-          },
-          body: JSON.stringify({ captains })
-        });
+            const masterKey =
+                (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.JSONBIN_MASTER_KEY || APP_CONFIG.MASTER_KEY || APP_CONFIG.JSONBIN_API_KEY)) ||
+                (typeof CONFIG !== 'undefined' && (CONFIG.JSONBIN_MASTER_KEY || CONFIG.MASTER_KEY || CONFIG.JSONBIN_API_KEY)) ||
+                window.JSONBIN_MASTER_KEY ||
+                JSONBIN_CONFIG.masterKey;
 
-        if (!putRes.ok) throw new Error(`HTTP ${putRes.status}`);
-        localVal.className = "ok-txt";
-        localVal.textContent = `محدّث سحابياً (${new Date().toLocaleTimeString("ar-IQ")})`;
-      } catch (err) {
-        localVal.className = "warn-txt";
-        localVal.textContent = `محلي فقط (${err.message})`;
-      }
-    }
+            return { binId: String(binId || '').trim(), masterKey: String(masterKey || '').trim() };
+        }
 
-    function scheduleCloudPush(record, forceImmediate) {
-      if (pendingCloudTimer) {
-        clearTimeout(pendingCloudTimer);
-        pendingCloudTimer = null;
-      }
-      const elapsed = Date.now() - lastCloudPushAt;
-      if (forceImmediate || elapsed >= CONFIG.minPushGapMs) {
-        flushCloudRecord(record);
-      } else {
-        pendingCloudTimer = setTimeout(() => {
-          flushCloudRecord(currentRecord || record);
-        }, CONFIG.minPushGapMs - elapsed);
-      }
-    }
+        const ENDPOINT_URL = resolveEndpoint();
+        const BIN_CFG = resolveJsonBinConfig();
+        const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('waseet_mosul_live_sync') : null;
 
-    function buildRecord(lat, lng, speed, accuracy, liveFlag, leftFlag) {
-      const prev = currentRecord;
-      const computedSpeed = (typeof speed === "number" && !Number.isNaN(speed))
-        ? speed
-        : (prev && typeof prev.speed === "number" ? prev.speed : 0);
+        let currentCaptain = { ...CAPTAINS_LIST[0] };
+        let currentLat = currentCaptain.lat;
+        let currentLng = currentCaptain.lng;
+        let currentSpeed = 0;
+        let currentAccuracy = 10;
+        let currentStatus = 'active';
+        let mode = 'gps';
+        let isStreaming = false;
+        let leftPage = false;
+        let awaySince = null;
+        let watchId = null;
+        let simTimer = null;
+        let wakeLockSentinel = null;
+        let miniMap = null;
+        let miniMarker = null;
+        let lastAcceptedGpsAt = 0;
+        let jsonBinQueue = Promise.resolve();
+        let lastJsonBinSyncAt = 0;
 
-      return {
-        id: CONFIG.captain.id,
-        name: CONFIG.captain.name,
-        lat: Number(lat),
-        lng: Number(lng),
-        speed: Number(computedSpeed),
-        accuracy: Number(accuracy || 15),
-        status: liveFlag ? workStatus : "offline",
-        mode: sourceMode,
-        remainingOrders: Number(remainingInput.value || 0),
-        deliveredOrders: Number(deliveredInput.value || 0),
-        isLive: Boolean(liveFlag),
-        leftPage: Boolean(leftFlag),
-        awaySince: leftFlag ? (prev && prev.awaySince ? prev.awaySince : new Date().toISOString()) : null,
-        lastUpdated: new Date().toISOString()
-      };
-    }
+        function getLockedCaptainFromUrl() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const rawCap = params.get('cap') || params.get('captain') || params.get('id');
+                if (!rawCap) return null;
+                const clean = decodeURIComponent(String(rawCap)).trim().toLowerCase();
+                return CAPTAINS_LIST.find(c =>
+                    String(c.id) === clean ||
+                    c.name.toLowerCase() === clean ||
+                    c.name.toLowerCase().includes(clean)
+                ) || null;
+            } catch (e) {
+                return null;
+            }
+        }
 
-    function sendSnapshot(lat, lng, speed, accuracy, liveFlag, leftFlag, forceImmediate) {
-      const rec = buildRecord(lat, lng, speed, accuracy, liveFlag, leftFlag);
-      currentRecord = rec;
-      saveLocal(rec);
-      coordsVal.textContent = `${rec.lat.toFixed(6)}, ${rec.lng.toFixed(6)} · دقة ±${Math.round(rec.accuracy)}م · سرعة ${Math.round(rec.speed)} كم/س`;
-      scheduleCloudPush(rec, Boolean(forceImmediate));
-    }
+        function isCaptainLocked() {
+            const lockedId = localStorage.getItem(LOCKED_CAPTAIN_KEY);
+            return Boolean(lockedId && CAPTAINS_LIST.some(c => String(c.id) === String(lockedId)));
+        }
 
-    function nextSimCoords() {
-      simStep += 1;
-      const angle = simStep * 0.22;
-      return {
-        lat: CONFIG.center.lat + Math.sin(angle) * 0.006,
-        lng: CONFIG.center.lng + Math.cos(angle) * 0.008,
-        speed: workStatus === "on_way" ? 28 : 0,
-        accuracy: 8
-      };
-    }
+        function syncAccountLockView() {
+            const setupBox = document.getElementById('setupAccountBox');
+            const lockedBox = document.getElementById('lockedAccountBox');
+            const lockedNameEl = document.getElementById('lockedCaptainNameText');
+            const startBtn = document.getElementById('startStreamBtn');
 
-    function startGpsWatch(fallbackLat, fallbackLng) {
-      if (!("geolocation" in navigator)) return;
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
+            if (isCaptainLocked()) {
+                setupBox.classList.add('hidden');
+                lockedBox.classList.remove('hidden');
+                lockedNameEl.textContent = currentCaptain.name;
+                startBtn.disabled = false;
+                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                setupBox.classList.remove('hidden');
+                lockedBox.classList.add('hidden');
+                startBtn.disabled = true;
+                startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
 
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          if (!isStreaming || sourceMode !== "gps") return;
-          const { latitude, longitude, speed, accuracy } = pos.coords;
-          const speedKmh = (typeof speed === "number" && !Number.isNaN(speed) && speed >= 0) ? speed * 3.6 : 0;
-          sendSnapshot(latitude, longitude, speedKmh, accuracy, true, document.hidden, true);
-        },
-        () => {},
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
-      );
+        function confirmAndLockCaptain() {
+            if (isCaptainLocked()) return;
+            const select = document.getElementById('captainSelect');
+            const chosenId = select.value;
+            const chosen = CAPTAINS_LIST.find(c => String(c.id) === String(chosenId));
+            if (!chosen) return;
 
-      watchId = navigator.geolocation.watchPosition(
-        pos => {
-          if (!isStreaming || sourceMode !== "gps") return;
-          const { latitude, longitude, speed, accuracy } = pos.coords;
-          const speedKmh = (typeof speed === "number" && !Number.isNaN(speed) && speed >= 0) ? speed * 3.6 : 0;
-          sendSnapshot(latitude, longitude, speedKmh, accuracy, true, document.hidden, false);
-        },
-        () => {
-          if (!isStreaming || sourceMode !== "gps") return;
-          sendSnapshot(fallbackLat, fallbackLng, 0, 25, true, document.hidden, false);
-        },
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
-      );
-    }
+            const ok = window.confirm(`هل أنت متأكد من تثبيت الحساب على: "${chosen.name}"؟ بعد التثبيت لن يُسمح بتغييره من داخل الواجهة.`);
+            if (!ok) return;
 
-    function restartLocationFeed() {
-      if (!isStreaming) return;
-      if (watchId !== null && "geolocation" in navigator) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
-      if (sourceMode === "sim") {
-        const sim = nextSimCoords();
-        sendSnapshot(sim.lat, sim.lng, sim.speed, sim.accuracy, true, document.hidden, true);
-      } else {
-        const baseLat = currentRecord ? currentRecord.lat : CONFIG.center.lat;
-        const baseLng = currentRecord ? currentRecord.lng : CONFIG.center.lng;
-        startGpsWatch(baseLat, baseLng);
-      }
-    }
+            localStorage.setItem(LOCKED_CAPTAIN_KEY, String(chosen.id));
+            localStorage.setItem('waseet_selected_captain_id', String(chosen.id));
+            loadCaptainProfile(chosen.id);
 
-    async function startBroadcast() {
-      isStreaming = true;
-      liveChip.textContent = "مباشر";
-      liveChip.className = "chip chip-live";
-      await requestWakeLock();
+            if (miniMap && miniMarker) {
+                miniMarker.setLatLng([currentLat, currentLng]);
+                miniMap.setView([currentLat, currentLng], 14);
+            }
 
-      if (sourceMode === "sim") {
-        const sim = nextSimCoords();
-        sendSnapshot(sim.lat, sim.lng, sim.speed, sim.accuracy, true, document.hidden, true);
-      } else {
-        const initLat = currentRecord ? currentRecord.lat : CONFIG.center.lat;
-        const initLng = currentRecord ? currentRecord.lng : CONFIG.center.lng;
-        sendSnapshot(initLat, initLng, 0, 20, true, document.hidden, true);
-        startGpsWatch(initLat, initLng);
-      }
+            syncAccountLockView();
+            updateUI();
+            appendLog(`تم تثبيت الحساب بشكل دائم على: ${currentCaptain.name}`);
+            startLiveTracking();
+        }
 
-      if (loopTimer) clearInterval(loopTimer);
-      loopTimer = setInterval(() => {
-        if (!isStreaming) return;
-        if (sourceMode === "sim") {
-          const sim = nextSimCoords();
-          sendSnapshot(sim.lat, sim.lng, sim.speed, sim.accuracy, true, document.hidden, true);
-        } else if (sourceMode === "gps" && "geolocation" in navigator) {
-          navigator.geolocation.getCurrentPosition(
-            pos => {
-              if (!isStreaming || sourceMode !== "gps") return;
-              const { latitude, longitude, speed, accuracy } = pos.coords;
-              const speedKmh = (typeof speed === "number" && !Number.isNaN(speed) && speed >= 0) ? speed * 3.6 : 0;
-              sendSnapshot(latitude, longitude, speedKmh, accuracy, true, document.hidden, true);
-            },
-            () => {
-              if (currentRecord) {
-                sendSnapshot(
-                  currentRecord.lat,
-                  currentRecord.lng,
-                  currentRecord.speed,
-                  currentRecord.accuracy,
-                  true,
-                  document.hidden,
-                  true
+        function initCaptainApp() {
+            const select = document.getElementById('captainSelect');
+            select.innerHTML = CAPTAINS_LIST.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+            const urlCaptain = getLockedCaptainFromUrl();
+            const lockedId = localStorage.getItem(LOCKED_CAPTAIN_KEY);
+
+            if (urlCaptain) {
+                localStorage.setItem(LOCKED_CAPTAIN_KEY, String(urlCaptain.id));
+                localStorage.setItem('waseet_selected_captain_id', String(urlCaptain.id));
+                loadCaptainProfile(urlCaptain.id);
+            } else if (lockedId) {
+                const foundLocked = CAPTAINS_LIST.find(c => String(c.id) === String(lockedId));
+                loadCaptainProfile(foundLocked ? foundLocked.id : CAPTAINS_LIST[0].id);
+            } else {
+                loadCaptainProfile(CAPTAINS_LIST[0].id);
+                select.value = CAPTAINS_LIST[0].id;
+            }
+
+            miniMap = L.map('miniMap', { center: [currentLat, currentLng], zoom: 14, zoomControl: false });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMap);
+            miniMarker = L.marker([currentLat, currentLng]).addTo(miniMap);
+            syncAccountLockView();
+            updateUI();
+
+            if (urlCaptain && isCaptainLocked()) {
+                appendLog(`تم التثبيت تلقائياً عبر الرابط المخصص: ${currentCaptain.name}`);
+                startLiveTracking();
+            }
+        }
+
+        function loadCaptainProfile(id) {
+            const base = CAPTAINS_LIST.find(c => String(c.id) === String(id)) || CAPTAINS_LIST[0];
+            let existing = {};
+            try {
+                const rawSelf = localStorage.getItem(`waseet_self_captain_${base.id}`);
+                if (rawSelf) existing = JSON.parse(rawSelf) || {};
+            } catch (e) {}
+
+            currentCaptain = {
+                ...base,
+                delivered: existing.deliveredOrders ?? base.delivered,
+                remaining: existing.remainingOrders ?? base.remaining
+            };
+            currentLat = Number(existing.lat ?? base.lat);
+            currentLng = Number(existing.lng ?? base.lng);
+            currentSpeed = Number(existing.speed ?? 0);
+            currentAccuracy = Number(existing.accuracy ?? 10);
+            currentStatus = existing.status || 'active';
+            leftPage = false;
+            awaySince = null;
+            localStorage.setItem('waseet_selected_captain_id', String(base.id));
+        }
+
+        function applyAccuratePosition(pos, forceAccept = false) {
+            if (!pos || !pos.coords) return false;
+            const lat = Number(pos.coords.latitude);
+            const lng = Number(pos.coords.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+
+            const acc = Math.max(1, Math.round(Number(pos.coords.accuracy) || 10));
+            const now = Date.now();
+            const isRecentHighAccuracy = acc <= currentAccuracy + 25 || (now - lastAcceptedGpsAt) > 15000;
+
+            if (!forceAccept && !isRecentHighAccuracy && lastAcceptedGpsAt > 0) {
+                return false;
+            }
+
+            currentLat = lat;
+            currentLng = lng;
+            currentAccuracy = acc;
+            lastAcceptedGpsAt = now;
+
+            const rawSpeedKmh = (typeof pos.coords.speed === 'number' && Number.isFinite(pos.coords.speed) && pos.coords.speed >= 0)
+                ? Math.round(pos.coords.speed * 3.6)
+                : 0;
+            currentSpeed = currentStatus === 'active' ? rawSpeedKmh : 0;
+
+            if (miniMarker && miniMap) {
+                miniMarker.setLatLng([currentLat, currentLng]);
+                miniMap.panTo([currentLat, currentLng]);
+            }
+            return true;
+        }
+
+        function setMode(nextMode) {
+            mode = nextMode;
+            document.getElementById('mode-gps').className = nextMode === 'gps'
+                ? 'px-3 py-1 rounded-lg font-bold bg-sky-600 text-white'
+                : 'px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300';
+            document.getElementById('mode-sim').className = nextMode === 'sim'
+                ? 'px-3 py-1 rounded-lg font-bold bg-sky-600 text-white'
+                : 'px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300';
+
+            if (isStreaming) {
+                stopLiveTracking(true);
+                startLiveTracking();
+            }
+        }
+
+        function setCaptainStatus(st) {
+            currentStatus = st;
+            if (st === 'stopped' || st === 'offline') currentSpeed = 0;
+            ['active', 'stopped', 'offline'].forEach(k => {
+                const el = document.getElementById(`st-${k}`);
+                if (!el) return;
+                el.className = (k === st)
+                    ? 'py-2 px-2 rounded-xl font-bold bg-emerald-600 text-white'
+                    : 'py-2 px-2 rounded-xl font-bold bg-slate-800 text-slate-300';
+            });
+            publishUpdate(true);
+        }
+
+        function adjustRemaining(delta) {
+            currentCaptain.remaining = Math.max(0, (Number(currentCaptain.remaining) || 0) + delta);
+            updateUI();
+            publishUpdate(true);
+        }
+
+        function adjustDelivered(delta) {
+            currentCaptain.delivered = Math.max(0, (Number(currentCaptain.delivered) || 0) + delta);
+            updateUI();
+            publishUpdate(true);
+        }
+
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLockSentinel = await navigator.wakeLock.request('screen');
+                    document.getElementById('wakeLockIndicator').textContent = 'إبقاء الشاشة: مفعّل';
+                } catch (e) {}
+            }
+        }
+
+        function sampleImmediateGpsAndPublish(forceAccept = true) {
+            if (!('geolocation' in navigator)) {
+                publishUpdate(true);
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    applyAccuratePosition(pos, forceAccept);
+                    publishUpdate(true);
+                },
+                () => {
+                    publishUpdate(true);
+                },
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+            );
+        }
+
+        async function startLiveTracking() {
+            if (!isCaptainLocked()) {
+                appendLog('يرجى تثبيت حساب الكابتن أولاً قبل بدء البث.');
+                return;
+            }
+            stopLiveTracking(true);
+            isStreaming = true;
+            leftPage = false;
+            awaySince = null;
+            lastAcceptedGpsAt = 0;
+            if (currentStatus === 'offline') currentStatus = 'active';
+            await requestWakeLock();
+            updateUI();
+
+            if (mode === 'gps' && 'geolocation' in navigator) {
+                sampleImmediateGpsAndPublish(true);
+                watchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        if (applyAccuratePosition(pos, false)) {
+                            publishUpdate(false);
+                        }
+                    },
+                    (err) => {
+                        appendLog(`تنبيه GPS: ${err.message}`);
+                    },
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
                 );
-              }
-            },
-            { enableHighAccuracy: true, maximumAge: 1500, timeout: 6000 }
-          );
-        } else if (currentRecord) {
-          sendSnapshot(
-            currentRecord.lat,
-            currentRecord.lng,
-            currentRecord.speed,
-            currentRecord.accuracy,
-            true,
-            document.hidden,
-            true
-          );
+            } else {
+                let heading = 0.6;
+                simTimer = setInterval(() => {
+                    if (currentStatus !== 'active') return;
+                    heading += (Math.random() - 0.5) * 0.4;
+                    currentLat += Math.cos(heading) * 0.00035;
+                    currentLng += Math.sin(heading) * 0.00035;
+                    currentSpeed = Math.floor(Math.random() * 20) + 32;
+                    currentAccuracy = 6;
+                    if (miniMarker && miniMap) {
+                        miniMarker.setLatLng([currentLat, currentLng]);
+                        miniMap.panTo([currentLat, currentLng]);
+                    }
+                    publishUpdate(false);
+                }, 2500);
+            }
         }
-      }, CONFIG.intervalMs);
-    }
 
-    async function stopBroadcast() {
-      isStreaming = false;
-      liveChip.textContent = "متوقف";
-      liveChip.className = "chip chip-off";
-      if (watchId !== null && "geolocation" in navigator) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
-      if (loopTimer) {
-        clearInterval(loopTimer);
-        loopTimer = null;
-      }
-      if (pendingCloudTimer) {
-        clearTimeout(pendingCloudTimer);
-        pendingCloudTimer = null;
-      }
-      await releaseWakeLock();
-      const lat = currentRecord ? currentRecord.lat : CONFIG.center.lat;
-      const lng = currentRecord ? currentRecord.lng : CONFIG.center.lng;
-      sendSnapshot(lat, lng, 0, 15, false, false, true);
-    }
+        function stopLiveTracking(silent = false) {
+            isStreaming = false;
+            currentSpeed = 0;
+            if (watchId !== null && 'geolocation' in navigator) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            if (simTimer !== null) {
+                clearInterval(simTimer);
+                simTimer = null;
+            }
+            if (wakeLockSentinel) {
+                wakeLockSentinel.release().catch(() => {});
+                wakeLockSentinel = null;
+            }
+            if (!silent) {
+                updateUI();
+                publishUpdate(true);
+            }
+        }
 
-    function pushOrdersImmediate() {
-      if (!isStreaming || !currentRecord) return;
-      sendSnapshot(
-        currentRecord.lat,
-        currentRecord.lng,
-        currentRecord.speed,
-        currentRecord.accuracy,
-        workStatus !== "offline",
-        document.hidden,
-        true
-      );
-    }
+        async function syncPayloadToJsonBin(payload) {
+            if (!BIN_CFG.binId) return;
+            const baseUrl = `https://api.jsonbin.io/v3/b/${encodeURIComponent(BIN_CFG.binId)}`;
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (BIN_CFG.masterKey) {
+                headers['X-Master-Key'] = BIN_CFG.masterKey;
+            }
 
-    document.addEventListener("visibilitychange", () => {
-      if (!isStreaming || !currentRecord) return;
-      if (!document.hidden && sourceMode === "gps") {
-        requestWakeLock();
-        restartLocationFeed();
-      }
-      sendSnapshot(
-        currentRecord.lat,
-        currentRecord.lng,
-        currentRecord.speed,
-        currentRecord.accuracy,
-        workStatus !== "offline",
-        document.hidden,
-        true
-      );
-    });
+            const getRes = await fetch(`${baseUrl}/latest`, {
+                method: 'GET',
+                headers: BIN_CFG.masterKey ? { 'X-Master-Key': BIN_CFG.masterKey } : {}
+            });
+            if (!getRes.ok) {
+                throw new Error(`JSONBin GET ${getRes.status}`);
+            }
 
-    remainingInput.addEventListener("change", pushOrdersImmediate);
-    deliveredInput.addEventListener("change", pushOrdersImmediate);
-    gpsModeBtn.addEventListener("click", () => setSourceMode("gps"));
-    simModeBtn.addEventListener("click", () => setSourceMode("sim"));
-    stOnWay.addEventListener("click", () => setWorkStatus("on_way"));
-    stStopped.addEventListener("click", () => setWorkStatus("stopped"));
-    stOffline.addEventListener("click", () => setWorkStatus("offline"));
-    startBtn.addEventListener("click", startBroadcast);
-    stopBtn.addEventListener("click", stopBroadcast);
-  </script>
+            const data = await getRes.json();
+            const record = (data && typeof data.record === 'object' && data.record !== null) ? { ...data.record } : {};
+            const captainsMap = (record.captains && typeof record.captains === 'object') ? { ...record.captains } : {};
+            captainsMap[String(payload.id)] = payload;
+
+            const nextRecord = {
+                ...record,
+                captains: captainsMap,
+                updatedAt: payload.lastUpdated
+            };
+
+            const putRes = await fetch(baseUrl, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify(nextRecord)
+            });
+            if (!putRes.ok) {
+                throw new Error(`JSONBin PUT ${putRes.status}`);
+            }
+            lastJsonBinSyncAt = Date.now();
+        }
+
+        function enqueueJsonBinSync(payload, force = false) {
+            if (!BIN_CFG.binId) return;
+            const now = Date.now();
+            if (!force && (now - lastJsonBinSyncAt) < 2200) {
+                return;
+            }
+            jsonBinQueue = jsonBinQueue
+                .then(() => syncPayloadToJsonBin(payload))
+                .catch((err) => {
+                    appendLog(`JSONBin: ${err.message}`);
+                });
+        }
+
+        function publishUpdate(forceBinSync = false) {
+            const payload = {
+                id: currentCaptain.id,
+                name: currentCaptain.name,
+                lat: currentLat,
+                lng: currentLng,
+                speed: currentSpeed,
+                accuracy: currentAccuracy,
+                status: currentStatus,
+                remainingOrders: Number(currentCaptain.remaining) || 0,
+                deliveredOrders: Number(currentCaptain.delivered) || 0,
+                isLive: isStreaming && currentStatus !== 'offline' && !leftPage,
+                leftPage: leftPage,
+                awaySince: awaySince,
+                lastUpdated: new Date().toISOString()
+            };
+
+            try {
+                localStorage.setItem(`waseet_self_captain_${payload.id}`, JSON.stringify(payload));
+            } catch (e) {}
+
+            if (syncChannel) {
+                syncChannel.postMessage({ type: 'DRIVER_LOCATION_UPDATE', payload });
+            }
+
+            if (ENDPOINT_URL) {
+                fetch(ENDPOINT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).catch(() => {});
+            }
+
+            enqueueJsonBinSync(payload, forceBinSync);
+
+            updateUI();
+            appendLog(`${payload.name} | ${payload.lat.toFixed(5)}, ${payload.lng.toFixed(5)} (±${payload.accuracy}م) | ${payload.leftPage ? 'خرج من الصفحة' : payload.speed + ' كم/س'}`);
+        }
+
+        function updateUI() {
+            document.getElementById('activeCaptainHeader').textContent = isCaptainLocked() ? currentCaptain.name : 'ثبّت حساب الكابتن لبدء البث';
+            document.getElementById('remainingCount').textContent = currentCaptain.remaining;
+            document.getElementById('deliveredCount').textContent = currentCaptain.delivered;
+            document.getElementById('telemetrySummary').textContent = `السرعة: ${currentSpeed} كم/س • الدقة: ${currentAccuracy} م`;
+
+            const badge = document.getElementById('streamStatusBadge');
+            if (isStreaming && currentStatus !== 'offline' && !leftPage) {
+                badge.textContent = 'يبث الآن';
+                badge.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+            } else if (isStreaming && leftPage) {
+                badge.textContent = 'خارج الصفحة';
+                badge.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30';
+            } else {
+                badge.textContent = 'متوقف';
+                badge.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700';
+            }
+        }
+
+        function appendLog(msg) {
+            const box = document.getElementById('logBox');
+            const time = new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const line = document.createElement('div');
+            line.textContent = `[${time}] ${msg}`;
+            box.prepend(line);
+            while (box.children.length > 20) box.removeChild(box.lastChild);
+        }
+
+        function markPageLeft() {
+            if (!isStreaming) return;
+            leftPage = true;
+            if (!awaySince) awaySince = new Date().toISOString();
+            publishUpdate(true);
+        }
+
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible') {
+                leftPage = false;
+                awaySince = null;
+                if (isStreaming) {
+                    await requestWakeLock();
+                    if (mode === 'gps' && 'geolocation' in navigator) {
+                        sampleImmediateGpsAndPublish(true);
+                    } else {
+                        publishUpdate(true);
+                    }
+                    appendLog('تمت استعادة البث والتحديث الفوري للموقع');
+                }
+            } else if (isStreaming) {
+                markPageLeft();
+                appendLog('تم تسجيل خروج الكابتن من الصفحة وحفظ آخر إحداثيات');
+            }
+        });
+
+        window.addEventListener('pagehide', markPageLeft);
+        window.addEventListener('beforeunload', markPageLeft);
+
+        setInterval(() => {
+            if (isStreaming && currentStatus !== 'offline' && !leftPage) {
+                if (mode === 'gps' && 'geolocation' in navigator) {
+                    sampleImmediateGpsAndPublish(false);
+                } else {
+                    publishUpdate(true);
+                }
+            }
+        }, 5000);
+
+        window.addEventListener('DOMContentLoaded', initCaptainApp);
+    </script>
 </body>
 </html>
