@@ -1,600 +1,325 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الوسيط — تطبيق كابتن الاستلام</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        cairo: ['Cairo', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #090d16;
-            color: #f8fafc;
-        }
-        #miniMap {
-            height: 220px;
-            width: 100%;
-            border-radius: 14px;
-            z-index: 10;
-        }
-        .leaflet-control-attribution {
-            display: none !important;
-        }
-    </style>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#090d16">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>بوابة الكابتن - متابعة الحركة المباشرة</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif; }
+    body {
+      margin: 0;
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .card {
+      max-width: 520px;
+      margin: 0 auto;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+    }
+    h1 { margin: 0 0 6px; font-size: 1.3rem; color: #38bdf8; }
+    .subtitle { margin: 0 0 18px; font-size: 0.9rem; color: #94a3b8; }
+    label { display: block; font-size: 0.88rem; margin-bottom: 6px; color: #cbd5e1; }
+    select, input {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 0.95rem;
+      margin-bottom: 14px;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+    button {
+      padding: 12px 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    button:hover { opacity: 0.92; }
+    .btn-start { background: #16a34a; color: #fff; }
+    .btn-stop { background: #dc2626; color: #fff; }
+    .status-box {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .live { background: rgba(22,163,74,0.2); color: #4ade80; }
+    .offline { background: rgba(239,68,68,0.2); color: #f87171; }
+    .sync-ok { color: #38bdf8; }
+    .sync-err { color: #fbbf24; }
+  </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+<body>
+  <div class="card">
+    <h1>واجهة الكابتن المباشرة</h1>
+    <p class="subtitle">إرسال الموقع والحالة فورياً إلى غرفة المتابعة</p>
 
-    <!-- الشريط العلوي -->
-    <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between gap-2 sticky top-0 z-30">
-        <div class="flex items-center gap-2.5 min-w-0">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shrink-0">
-                <i class="fa-solid fa-truck text-white text-sm"></i>
-            </div>
-            <div class="min-w-0">
-                <h1 class="text-sm sm:text-base font-extrabold text-white truncate">الوسيط — تطبيق كابتن الاستلام</h1>
-                <p id="activeCaptainHeader" class="text-[11px] text-slate-400 truncate">ثبّت حساب الكابتن لبدء البث</p>
-            </div>
-        </div>
+    <label for="captainSelect">اختر الكابتن</label>
+    <select id="captainSelect"></select>
 
-        <div class="flex items-center gap-2 shrink-0">
-            <span id="streamStatusBadge" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
-                متوقف
-            </span>
-            <span class="px-2.5 py-1 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-300 text-[11px] font-bold">
-                بث للمتابعة فقط
-            </span>
-        </div>
-    </header>
+    <label for="statusSelect">حالة العمل</label>
+    <select id="statusSelect">
+      <option value="active">نشط في التوصيل</option>
+      <option value="break">استراحة قصيرة</option>
+      <option value="delayed">تأخير / ازدحام</option>
+      <option value="offline">غير متصل</option>
+    </select>
 
-    <main class="flex-1 max-w-xl w-full mx-auto p-4 space-y-4">
+    <div class="row">
+      <div>
+        <label for="remainingOrders">الطلبات المتبقية</label>
+        <input id="remainingOrders" type="number" min="0" value="0" />
+      </div>
+      <div>
+        <label for="deliveredOrders">الطلبات المسلّمة</label>
+        <input id="deliveredOrders" type="number" min="0" value="0" />
+      </div>
+    </div>
 
-        <!-- تثبيت حساب الكابتن لمرة واحدة -->
-        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <div class="flex items-center justify-between">
-                <span class="text-xs font-extrabold text-emerald-400">
-                    <i class="fa-solid fa-shield-halved ml-1"></i>
-                    حساب كابتن الاستلام المثبّت
-                </span>
-                <span id="wakeLockIndicator" class="text-[11px] text-slate-400">إبقاء الشاشة: تلقائي</span>
-            </div>
+    <div class="btn-group">
+      <button class="btn-start" id="startBtn" type="button">بدء البث المباشر</button>
+      <button class="btn-stop" id="stopBtn" type="button">إيقاف البث</button>
+    </div>
 
-            <!-- شاشة الاختيار والتثبيت لأول مرة فقط -->
-            <div id="setupAccountBox" class="space-y-2.5">
-                <p class="text-[11px] text-slate-400">
-                    اختر اسمك مرة واحدة فقط لتثبيته على هذا الجهاز. بعد التثبيت سيظهر حسابك فقط ولن يُسمح بتغييره من داخل الواجهة.
-                </p>
-                <select id="captainSelect" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none">
-                    <!-- يتم تعبئتها تلقائياً -->
-                </select>
-                <button id="lockCaptainBtn" onclick="confirmAndLockCaptain()" class="w-full py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-lock"></i>
-                    <span>تثبيت حسابي بشكل دائم</span>
-                </button>
-            </div>
+    <div class="status-box" id="statusBox">
+      الحالة: <span class="badge offline" id="liveBadge">متوقف</span><br />
+      الإحداثيات: <span id="coordsText">بانتظار تحديد الموقع...</span><br />
+      المزامنة السحابية: <span id="syncText" class="sync-ok">جاهز</span>
+    </div>
+  </div>
 
-            <!-- عرض الحساب المثبّت بعد القفل -->
-            <div id="lockedAccountBox" class="hidden bg-slate-950 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between gap-2">
-                <div class="min-w-0">
-                    <span class="text-[10px] text-emerald-400 font-bold block">حساب مثبّت ومقفل</span>
-                    <div id="lockedCaptainNameText" class="text-sm font-black text-white truncate">—</div>
-                </div>
-                <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold shrink-0">
-                    <i class="fa-solid fa-lock ml-1"></i> مثبت
-                </span>
-            </div>
+  <script>
+    const CONFIG = {
+      binId: "6b07872413d2c8610b12db5e",
+      masterKey: "$2a$10$qOS1lm7Vo1tq9r.w/vTMoOnHrSJ7MKisq.6csaRUyFQ/7vRaV4PfS",
+      defaultCenter: { lat: 36.3489, lng: 43.1577 }, // الموصل
+      pollIntervalMs: 5000
+    };
 
-            <div class="grid grid-cols-2 gap-2 pt-1">
-                <button id="startStreamBtn" onclick="startLiveTracking()" class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-location-crosshairs"></i>
-                    <span>بدء البث المباشر</span>
-                </button>
-                <button id="stopStreamBtn" onclick="stopLiveTracking()" class="py-2.5 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-stop"></i>
-                    <span>إيقاف البث</span>
-                </button>
-            </div>
-        </section>
+    const CAPTAINS = Array.from({ length: 14 }, (_, idx) => ({
+      id: idx + 1,
+      name: `كابتن ${idx + 1}`
+    }));
 
-        <!-- تنبيه الاستخدام الطبيعي للهاتف -->
-        <div id="backgroundHintBanner" class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 text-xs text-amber-200 flex items-start gap-2.5">
-            <i class="fa-solid fa-circle-info text-amber-400 mt-0.5 shrink-0"></i>
-            <div>
-                <p class="font-bold text-amber-300">ملاحظة مهمة حول استخدام الهاتف أثناء البث:</p>
-                <p class="text-[11px] text-amber-100/90 mt-0.5 leading-relaxed">
-                    لأسباب أمان نظام الهاتف (أندرويد و iOS)، قد يجمّد المتصفح قراءة GPS في الخلفية إذا غادر الكابتن الصفحة أو أغلق الشاشة لفترة طويلة. يحدّث التطبيق موقع الكابتن فوراً وبشكل تلقائي بمجرد العودة أو التنقل بين التطبيقات، ويبقي آخر موقع موثّق ظاهراً على الخريطة.
-                </p>
-            </div>
-        </div>
+    const LOCAL_KEY = "waseet_fleet_captains_v1";
+    const channel = ("BroadcastChannel" in window) ? new BroadcastChannel("waseet_fleet_channel") : null;
 
-        <!-- وضع تحديد الموقع والسرعة -->
-        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <div class="flex items-center justify-between gap-2">
-                <span class="text-xs font-extrabold text-sky-400">
-                    <i class="fa-solid fa-satellite ml-1"></i>
-                    مصدر الموقع
-                </span>
-                <div class="flex items-center gap-1.5 text-xs">
-                    <button onclick="setMode('gps')" id="mode-gps" class="px-3 py-1 rounded-lg font-bold bg-sky-600 text-white">GPS حقيقي</button>
-                    <button onclick="setMode('sim')" id="mode-sim" class="px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300">محاكاة حركة</button>
-                </div>
-            </div>
-            <p id="gpsHintText" class="text-[11px] text-slate-400">
-                يقرأ إحداثيات الهاتف الفعلية وسرعته ويرسلها مباشرة إلى قسم المتابعة فقط دون إظهار مواقع الكباتن الآخرين.
-            </p>
-        </section>
+    const captainSelect = document.getElementById("captainSelect");
+    const statusSelect = document.getElementById("statusSelect");
+    const remainingInput = document.getElementById("remainingOrders");
+    const deliveredInput = document.getElementById("deliveredOrders");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const liveBadge = document.getElementById("liveBadge");
+    const coordsText = document.getElementById("coordsText");
+    const syncText = document.getElementById("syncText");
 
-        <!-- الحالة وعداد الطلبات -->
-        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <span class="text-xs font-extrabold text-amber-400 block">
-                <i class="fa-solid fa-sliders ml-1"></i>
-                حالة الكابتن والطلبات
-            </span>
+    let watchId = null;
+    let heartbeatTimer = null;
+    let isStreaming = false;
+    let currentRecord = null;
 
-            <div class="grid grid-cols-3 gap-2 text-xs">
-                <button onclick="setCaptainStatus('active')" id="st-active" class="py-2 px-2 rounded-xl font-bold bg-emerald-600 text-white">في الطريق</button>
-                <button onclick="setCaptainStatus('stopped')" id="st-stopped" class="py-2 px-2 rounded-xl font-bold bg-slate-800 text-slate-300">متوقف</button>
-                <button onclick="setCaptainStatus('offline')" id="st-offline" class="py-2 px-2 rounded-xl font-bold bg-slate-800 text-slate-300">غير متصل</button>
-            </div>
+    function initSelect() {
+      CAPTAINS.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.name;
+        captainSelect.appendChild(opt);
+      });
+    }
 
-            <div class="grid grid-cols-2 gap-3 pt-1">
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
-                    <span class="text-[11px] text-slate-400 block">طلبات في العهدة</span>
-                    <div class="flex items-center justify-between mt-1.5">
-                        <button onclick="adjustRemaining(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">-</button>
-                        <span id="remainingCount" class="text-lg font-black text-amber-400">0</span>
-                        <button onclick="adjustRemaining(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">+</button>
-                    </div>
-                </div>
+    function readLocalCaptains() {
+      try {
+        const raw = localStorage.getItem(LOCAL_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_) {
+        return [];
+      }
+    }
 
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
-                    <span class="text-[11px] text-slate-400 block">الطلبات المُسلّمة</span>
-                    <div class="flex items-center justify-between mt-1.5">
-                        <button onclick="adjustDelivered(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">-</button>
-                        <span id="deliveredCount" class="text-lg font-black text-emerald-400">0</span>
-                        <button onclick="adjustDelivered(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">+</button>
-                    </div>
-                </div>
-            </div>
-        </section>
+    function writeLocalCaptains(list) {
+      try {
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+        if (channel) channel.postMessage({ type: "update", captains: list });
+      } catch (_) {}
+    }
 
-        <!-- الخريطة المصغرة وسجل الإحداثيات -->
-        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <div class="flex items-center justify-between text-xs">
-                <span class="font-extrabold text-white">معاينة الموقع الحالي</span>
-                <span id="telemetrySummary" class="font-mono text-sky-400">السرعة: 0 كم/س</span>
-            </div>
-            <div id="miniMap"></div>
-            <div id="logBox" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-[11px] text-slate-400 font-mono space-y-1 max-h-28 overflow-y-auto">
-                <div>جاهز لتثبيت الحساب وبدء البث المباشر للكابتن.</div>
-            </div>
-        </section>
+    function upsertLocalCaptain(record) {
+      const list = readLocalCaptains();
+      const idx = list.findIndex(item => Number(item.id) === Number(record.id));
+      if (idx >= 0) list[idx] = record;
+      else list.push(record);
+      writeLocalCaptains(list);
+      return list;
+    }
 
-    </main>
+    async function syncToCloud(record) {
+      syncText.className = "sync-ok";
+      syncText.textContent = "جاري الإرسال إلى JSONBin...";
+      const url = `https://api.jsonbin.io/v3/b/${encodeURIComponent(CONFIG.binId)}`;
 
-    <script src="config.js" onerror="window.__MISSING_CONFIG__ = true;"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <script>
-        const CAPTAINS_LIST = [
-            { id: 1, name: "كابتن الاستلام مصطفى محمد", lat: 36.3325, lng: 43.1120, delivered: 14, remaining: 3 },
-            { id: 2, name: "كابتن الاستلام محمد طارق", lat: 36.3640, lng: 43.1580, delivered: 19, remaining: 2 },
-            { id: 3, name: "كابتن الاستلام محمد زياد", lat: 36.3785, lng: 43.1490, delivered: 11, remaining: 4 },
-            { id: 4, name: "كابتن الاستلام احمد فراس", lat: 36.3690, lng: 43.1820, delivered: 16, remaining: 1 },
-            { id: 5, name: "كابتن الاستلام عجيب موفق", lat: 36.3575, lng: 43.1735, delivered: 22, remaining: 5 },
-            { id: 6, name: "كابتن الاستلام ريان سالم", lat: 36.3340, lng: 43.2080, delivered: 9, remaining: 4 },
-            { id: 7, name: "كابتن الاستلام عمار هاشم", lat: 36.3195, lng: 43.1280, delivered: 15, remaining: 2 },
-            { id: 8, name: "كابتن الاستلام يوسف فتح الله", lat: 36.3380, lng: 43.1365, delivered: 18, remaining: 3 },
-            { id: 9, name: "كابتن الاستلام عبدالله تحسين", lat: 36.3485, lng: 43.1645, delivered: 13, remaining: 2 },
-            { id: 10, name: "كابتن الاستلام احمد علي", lat: 36.1580, lng: 43.2520, delivered: 8, remaining: 3 },
-            { id: 11, name: "كابتن الاستلام محمد قحطان", lat: 35.8020, lng: 43.2890, delivered: 10, remaining: 0 },
-            { id: 12, name: "كابتن الاستلام عمر مازن", lat: 36.3420, lng: 43.1960, delivered: 17, remaining: 4 },
-            { id: 13, name: "كابتن الاستلام مصطفى مؤيد", lat: 36.3510, lng: 43.1855, delivered: 12, remaining: 3 },
-            { id: 14, name: "كابتن الاستلام قصي محمد", lat: 36.3855, lng: 43.1660, delivered: 21, remaining: 1 }
-        ];
-
-        const LOCKED_CAPTAIN_KEY = 'waseet_locked_captain_id_v1';
-
-        function resolveEndpoint() {
-            if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.ENDPOINT) return APP_CONFIG.ENDPOINT;
-            if (typeof CONFIG !== 'undefined' && CONFIG.ENDPOINT) return CONFIG.ENDPOINT;
-            if (typeof ENDPOINT !== 'undefined' && typeof ENDPOINT === 'string') return ENDPOINT;
-            if (window.ENDPOINT) return window.ENDPOINT;
-            return '';
-        }
-
-        const ENDPOINT_URL = resolveEndpoint();
-        const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('waseet_mosul_live_sync') : null;
-
-        let currentCaptain = { ...CAPTAINS_LIST[0] };
-        let currentLat = currentCaptain.lat;
-        let currentLng = currentCaptain.lng;
-        let currentSpeed = 0;
-        let currentAccuracy = 10;
-        let currentStatus = 'active';
-        let mode = 'gps';
-        let isStreaming = false;
-        let leftPage = false;
-        let awaySince = null;
-        let watchId = null;
-        let simTimer = null;
-        let wakeLockSentinel = null;
-        let miniMap = null;
-        let miniMarker = null;
-
-        function getLockedCaptainFromUrl() {
-            try {
-                const params = new URLSearchParams(window.location.search);
-                const rawCap = params.get('cap') || params.get('captain') || params.get('id');
-                if (!rawCap) return null;
-                const clean = decodeURIComponent(String(rawCap)).trim().toLowerCase();
-                return CAPTAINS_LIST.find(c =>
-                    String(c.id) === clean ||
-                    c.name.toLowerCase() === clean ||
-                    c.name.toLowerCase().includes(clean)
-                ) || null;
-            } catch (e) {
-                return null;
-            }
-        }
-
-        function isCaptainLocked() {
-            const lockedId = localStorage.getItem(LOCKED_CAPTAIN_KEY);
-            return Boolean(lockedId && CAPTAINS_LIST.some(c => String(c.id) === String(lockedId)));
-        }
-
-        function syncAccountLockView() {
-            const setupBox = document.getElementById('setupAccountBox');
-            const lockedBox = document.getElementById('lockedAccountBox');
-            const lockedNameEl = document.getElementById('lockedCaptainNameText');
-            const startBtn = document.getElementById('startStreamBtn');
-
-            if (isCaptainLocked()) {
-                setupBox.classList.add('hidden');
-                lockedBox.classList.remove('hidden');
-                lockedNameEl.textContent = currentCaptain.name;
-                startBtn.disabled = false;
-                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            } else {
-                setupBox.classList.remove('hidden');
-                lockedBox.classList.add('hidden');
-                startBtn.disabled = true;
-                startBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            }
-        }
-
-        function confirmAndLockCaptain() {
-            if (isCaptainLocked()) return;
-            const select = document.getElementById('captainSelect');
-            const chosenId = select.value;
-            const chosen = CAPTAINS_LIST.find(c => String(c.id) === String(chosenId));
-            if (!chosen) return;
-
-            const ok = window.confirm(`هل أنت متأكد من تثبيت الحساب على: "${chosen.name}"؟ بعد التثبيت لن يُسمح بتغييره من داخل الواجهة.`);
-            if (!ok) return;
-
-            localStorage.setItem(LOCKED_CAPTAIN_KEY, String(chosen.id));
-            localStorage.setItem('waseet_selected_captain_id', String(chosen.id));
-            loadCaptainProfile(chosen.id);
-
-            if (miniMap && miniMarker) {
-                miniMarker.setLatLng([currentLat, currentLng]);
-                miniMap.setView([currentLat, currentLng], 14);
-            }
-
-            syncAccountLockView();
-            updateUI();
-            appendLog(`تم تثبيت الحساب بشكل دائم على: ${currentCaptain.name}`);
-            startLiveTracking();
-        }
-
-        function initCaptainApp() {
-            const select = document.getElementById('captainSelect');
-            select.innerHTML = CAPTAINS_LIST.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
-            const urlCaptain = getLockedCaptainFromUrl();
-            const lockedId = localStorage.getItem(LOCKED_CAPTAIN_KEY);
-
-            if (urlCaptain) {
-                localStorage.setItem(LOCKED_CAPTAIN_KEY, String(urlCaptain.id));
-                localStorage.setItem('waseet_selected_captain_id', String(urlCaptain.id));
-                loadCaptainProfile(urlCaptain.id);
-            } else if (lockedId) {
-                const foundLocked = CAPTAINS_LIST.find(c => String(c.id) === String(lockedId));
-                loadCaptainProfile(foundLocked ? foundLocked.id : CAPTAINS_LIST[0].id);
-            } else {
-                loadCaptainProfile(CAPTAINS_LIST[0].id);
-                select.value = CAPTAINS_LIST[0].id;
-            }
-
-            miniMap = L.map('miniMap', { center: [currentLat, currentLng], zoom: 14, zoomControl: false });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMap);
-            miniMarker = L.marker([currentLat, currentLng]).addTo(miniMap);
-            syncAccountLockView();
-            updateUI();
-
-            if (urlCaptain && isCaptainLocked()) {
-                appendLog(`تم التثبيت تلقائياً عبر الرابط المخصص: ${currentCaptain.name}`);
-                startLiveTracking();
-            }
-        }
-
-        function loadCaptainProfile(id) {
-            const base = CAPTAINS_LIST.find(c => String(c.id) === String(id)) || CAPTAINS_LIST[0];
-            let existing = {};
-            try {
-                const rawSelf = localStorage.getItem(`waseet_self_captain_${base.id}`);
-                if (rawSelf) existing = JSON.parse(rawSelf) || {};
-            } catch (e) {}
-
-            currentCaptain = {
-                ...base,
-                delivered: existing.deliveredOrders ?? base.delivered,
-                remaining: existing.remainingOrders ?? base.remaining
-            };
-            currentLat = Number(existing.lat ?? base.lat);
-            currentLng = Number(existing.lng ?? base.lng);
-            currentSpeed = Number(existing.speed ?? 0);
-            currentStatus = existing.status || 'active';
-            leftPage = false;
-            awaySince = null;
-            localStorage.setItem('waseet_selected_captain_id', String(base.id));
-        }
-
-        function setMode(nextMode) {
-            mode = nextMode;
-            document.getElementById('mode-gps').className = nextMode === 'gps'
-                ? 'px-3 py-1 rounded-lg font-bold bg-sky-600 text-white'
-                : 'px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300';
-            document.getElementById('mode-sim').className = nextMode === 'sim'
-                ? 'px-3 py-1 rounded-lg font-bold bg-sky-600 text-white'
-                : 'px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300';
-
-            if (isStreaming) {
-                stopLiveTracking(true);
-                startLiveTracking();
-            }
-        }
-
-        function setCaptainStatus(st) {
-            currentStatus = st;
-            if (st === 'stopped' || st === 'offline') currentSpeed = 0;
-            ['active', 'stopped', 'offline'].forEach(k => {
-                const el = document.getElementById(`st-${k}`);
-                if (!el) return;
-                el.className = (k === st)
-                    ? 'py-2 px-2 rounded-xl font-bold bg-emerald-600 text-white'
-                    : 'py-2 px-2 rounded-xl font-bold bg-slate-800 text-slate-300';
-            });
-            publishUpdate();
-        }
-
-        function adjustRemaining(delta) {
-            currentCaptain.remaining = Math.max(0, (Number(currentCaptain.remaining) || 0) + delta);
-            updateUI();
-            publishUpdate();
-        }
-
-        function adjustDelivered(delta) {
-            currentCaptain.delivered = Math.max(0, (Number(currentCaptain.delivered) || 0) + delta);
-            updateUI();
-            publishUpdate();
-        }
-
-        async function requestWakeLock() {
-            if ('wakeLock' in navigator) {
-                try {
-                    wakeLockSentinel = await navigator.wakeLock.request('screen');
-                    document.getElementById('wakeLockIndicator').textContent = 'إبقاء الشاشة: مفعّل';
-                } catch (e) {}
-            }
-        }
-
-        async function startLiveTracking() {
-            if (!isCaptainLocked()) {
-                appendLog('يرجى تثبيت حساب الكابتن أولاً قبل بدء البث.');
-                return;
-            }
-            stopLiveTracking(true);
-            isStreaming = true;
-            leftPage = false;
-            awaySince = null;
-            if (currentStatus === 'offline') currentStatus = 'active';
-            await requestWakeLock();
-            updateUI();
-
-            if (mode === 'gps' && 'geolocation' in navigator) {
-                watchId = navigator.geolocation.watchPosition(
-                    (pos) => {
-                        currentLat = pos.coords.latitude;
-                        currentLng = pos.coords.longitude;
-                        currentAccuracy = Math.round(pos.coords.accuracy || 10);
-                        const rawSpeedKmh = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
-                        currentSpeed = currentStatus === 'active' ? rawSpeedKmh : 0;
-                        if (miniMarker && miniMap) {
-                            miniMarker.setLatLng([currentLat, currentLng]);
-                            miniMap.panTo([currentLat, currentLng]);
-                        }
-                        publishUpdate();
-                    },
-                    (err) => {
-                        appendLog(`تنبيه GPS: ${err.message}`);
-                    },
-                    { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
-                );
-            } else {
-                let heading = 0.6;
-                simTimer = setInterval(() => {
-                    if (currentStatus !== 'active') return;
-                    heading += (Math.random() - 0.5) * 0.4;
-                    currentLat += Math.cos(heading) * 0.00035;
-                    currentLng += Math.sin(heading) * 0.00035;
-                    currentSpeed = Math.floor(Math.random() * 20) + 32;
-                    if (miniMarker && miniMap) {
-                        miniMarker.setLatLng([currentLat, currentLng]);
-                        miniMap.panTo([currentLat, currentLng]);
-                    }
-                    publishUpdate();
-                }, 2500);
-            }
-        }
-
-        function stopLiveTracking(silent = false) {
-            isStreaming = false;
-            currentSpeed = 0;
-            if (watchId !== null && 'geolocation' in navigator) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-            }
-            if (simTimer !== null) {
-                clearInterval(simTimer);
-                simTimer = null;
-            }
-            if (wakeLockSentinel) {
-                wakeLockSentinel.release().catch(() => {});
-                wakeLockSentinel = null;
-            }
-            if (!silent) {
-                updateUI();
-                publishUpdate();
-            }
-        }
-
-        function publishUpdate() {
-            const payload = {
-                id: currentCaptain.id,
-                name: currentCaptain.name,
-                lat: currentLat,
-                lng: currentLng,
-                speed: currentSpeed,
-                accuracy: currentAccuracy,
-                status: currentStatus,
-                remainingOrders: Number(currentCaptain.remaining) || 0,
-                deliveredOrders: Number(currentCaptain.delivered) || 0,
-                isLive: isStreaming && currentStatus !== 'offline' && !leftPage,
-                leftPage: leftPage,
-                awaySince: awaySince,
-                lastUpdated: new Date().toISOString()
-            };
-
-            try {
-                localStorage.setItem(`waseet_self_captain_${payload.id}`, JSON.stringify(payload));
-            } catch (e) {}
-
-            if (syncChannel) {
-                syncChannel.postMessage({ type: 'DRIVER_LOCATION_UPDATE', payload });
-            }
-
-            if (ENDPOINT_URL) {
-                fetch(ENDPOINT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                }).catch(() => {});
-            }
-
-            updateUI();
-            appendLog(`${payload.name} | ${payload.lat.toFixed(4)}, ${payload.lng.toFixed(4)} | ${payload.leftPage ? 'خرج من الصفحة' : payload.speed + ' كم/س'}`);
-        }
-
-        function updateUI() {
-            document.getElementById('activeCaptainHeader').textContent = isCaptainLocked() ? currentCaptain.name : 'ثبّت حساب الكابتن لبدء البث';
-            document.getElementById('remainingCount').textContent = currentCaptain.remaining;
-            document.getElementById('deliveredCount').textContent = currentCaptain.delivered;
-            document.getElementById('telemetrySummary').textContent = `السرعة: ${currentSpeed} كم/س • الدقة: ${currentAccuracy} م`;
-
-            const badge = document.getElementById('streamStatusBadge');
-            if (isStreaming && currentStatus !== 'offline' && !leftPage) {
-                badge.textContent = 'يبث الآن';
-                badge.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
-            } else if (isStreaming && leftPage) {
-                badge.textContent = 'خارج الصفحة';
-                badge.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30';
-            } else {
-                badge.textContent = 'متوقف';
-                badge.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700';
-            }
-        }
-
-        function appendLog(msg) {
-            const box = document.getElementById('logBox');
-            const time = new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const line = document.createElement('div');
-            line.textContent = `[${time}] ${msg}`;
-            box.prepend(line);
-            while (box.children.length > 20) box.removeChild(box.lastChild);
-        }
-
-        function markPageLeft() {
-            if (!isStreaming) return;
-            leftPage = true;
-            if (!awaySince) awaySince = new Date().toISOString();
-            publishUpdate();
-        }
-
-        document.addEventListener('visibilitychange', async () => {
-            if (document.visibilityState === 'visible') {
-                leftPage = false;
-                awaySince = null;
-                if (isStreaming) {
-                    await requestWakeLock();
-                    if (mode === 'gps' && 'geolocation' in navigator) {
-                        navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                                currentLat = pos.coords.latitude;
-                                currentLng = pos.coords.longitude;
-                                currentAccuracy = Math.round(pos.coords.accuracy || 10);
-                                const rawSpeedKmh = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
-                                currentSpeed = currentStatus === 'active' ? rawSpeedKmh : 0;
-                                if (miniMarker && miniMap) {
-                                    miniMarker.setLatLng([currentLat, currentLng]);
-                                    miniMap.panTo([currentLat, currentLng]);
-                                }
-                                publishUpdate();
-                            },
-                            () => { publishUpdate(); },
-                            { enableHighAccuracy: true, maximumAge: 1000, timeout: 8000 }
-                        );
-                    } else {
-                        publishUpdate();
-                    }
-                    appendLog('تمت استعادة البث والتحديث الفوري للموقع');
-                }
-            } else if (isStreaming) {
-                markPageLeft();
-                appendLog('تم تسجيل خروج الكابتن من الصفحة وحفظ آخر إحداثيات');
-            }
+      try {
+        let remoteList = [];
+        const getRes = await fetch(`${url}/latest`, {
+          method: "GET",
+          headers: {
+            "X-Master-Key": CONFIG.masterKey
+          }
         });
 
-        window.addEventListener('pagehide', markPageLeft);
-        window.addEventListener('beforeunload', markPageLeft);
+        if (getRes.ok) {
+          const json = await getRes.json();
+          const payload = json && json.record ? json.record : {};
+          if (Array.isArray(payload.captains)) {
+            remoteList = payload.captains;
+          }
+        }
 
-        setInterval(() => {
-            if (isStreaming && currentStatus !== 'offline' && !leftPage) {
-                publishUpdate();
-            }
-        }, 12000);
+        const idx = remoteList.findIndex(item => Number(item.id) === Number(record.id));
+        if (idx >= 0) remoteList[idx] = record;
+        else remoteList.push(record);
 
-        window.addEventListener('DOMContentLoaded', initCaptainApp);
-    </script>
+        const putRes = await fetch(url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": CONFIG.masterKey
+          },
+          body: JSON.stringify({ captains: remoteList })
+        });
+
+        if (!putRes.ok) {
+          throw new Error(`HTTP ${putRes.status}`);
+        }
+
+        syncText.className = "sync-ok";
+        syncText.textContent = `تمت المزامنة (${new Date().toLocaleTimeString("ar-IQ")})`;
+      } catch (err) {
+        syncText.className = "sync-err";
+        syncText.textContent = `تعذر الإرسال السحابي (${err.message}) — محفوظ محلياً`;
+      }
+    }
+
+    function buildRecord(lat, lng, speed, accuracy, liveFlag, leftFlag) {
+      const id = Number(captainSelect.value);
+      const capObj = CAPTAINS.find(c => c.id === id) || { id, name: `كابتن ${id}` };
+      const prev = currentRecord && Number(currentRecord.id) === id ? currentRecord : null;
+
+      return {
+        id: capObj.id,
+        name: capObj.name,
+        lat: Number(lat),
+        lng: Number(lng),
+        speed: Number(speed || 0),
+        accuracy: Number(accuracy || 15),
+        status: liveFlag ? statusSelect.value : "offline",
+        remainingOrders: Number(remainingInput.value || 0),
+        deliveredOrders: Number(deliveredInput.value || 0),
+        isLive: Boolean(liveFlag),
+        leftPage: Boolean(leftFlag),
+        awaySince: leftFlag ? (prev && prev.awaySince ? prev.awaySince : new Date().toISOString()) : null,
+        lastUpdated: new Date().toISOString()
+      };
+    }
+
+    async function pushUpdate(lat, lng, speed, accuracy, liveFlag, leftFlag) {
+      const rec = buildRecord(lat, lng, speed, accuracy, liveFlag, leftFlag);
+      currentRecord = rec;
+      upsertLocalCaptain(rec);
+      coordsText.textContent = `${rec.lat.toFixed(5)}, ${rec.lng.toFixed(5)} (دقة ${Math.round(rec.accuracy)}م)`;
+      await syncToCloud(rec);
+    }
+
+    function startStreaming() {
+      isStreaming = true;
+      liveBadge.textContent = "مباشر";
+      liveBadge.className = "badge live";
+
+      const fallbackLat = currentRecord ? currentRecord.lat : CONFIG.defaultCenter.lat;
+      const fallbackLng = currentRecord ? currentRecord.lng : CONFIG.defaultCenter.lng;
+      pushUpdate(fallbackLat, fallbackLng, 0, 20, true, document.hidden);
+
+      if ("geolocation" in navigator) {
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        watchId = navigator.geolocation.watchPosition(
+          pos => {
+            const { latitude, longitude, speed, accuracy } = pos.coords;
+            pushUpdate(latitude, longitude, speed ? speed * 3.6 : 0, accuracy, isStreaming, document.hidden);
+          },
+          () => {
+            pushUpdate(fallbackLat, fallbackLng, 0, 30, isStreaming, document.hidden);
+          },
+          { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+        );
+      }
+
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(() => {
+        if (!isStreaming) return;
+        const lat = currentRecord ? currentRecord.lat : CONFIG.defaultCenter.lat;
+        const lng = currentRecord ? currentRecord.lng : CONFIG.defaultCenter.lng;
+        const spd = currentRecord ? currentRecord.speed : 0;
+        const acc = currentRecord ? currentRecord.accuracy : 15;
+        pushUpdate(lat, lng, spd, acc, true, document.hidden);
+      }, CONFIG.pollIntervalMs);
+    }
+
+    function stopStreaming() {
+      isStreaming = false;
+      liveBadge.textContent = "متوقف";
+      liveBadge.className = "badge offline";
+      if (watchId !== null && "geolocation" in navigator) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+      const lat = currentRecord ? currentRecord.lat : CONFIG.defaultCenter.lat;
+      const lng = currentRecord ? currentRecord.lng : CONFIG.defaultCenter.lng;
+      pushUpdate(lat, lng, 0, 15, false, false);
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (!isStreaming || !currentRecord) return;
+      pushUpdate(
+        currentRecord.lat,
+        currentRecord.lng,
+        currentRecord.speed,
+        currentRecord.accuracy,
+        true,
+        document.hidden
+      );
+    });
+
+    startBtn.addEventListener("click", startStreaming);
+    stopBtn.addEventListener("click", stopStreaming);
+
+    initSelect();
+  </script>
 </body>
 </html>
