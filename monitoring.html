@@ -1,235 +1,465 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>الوسيط — متابعة الكابتن المباشرة</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif; }
-    body {
-      margin: 0;
-      background: #070b14;
-      color: #f1f5f9;
-      display: grid;
-      grid-template-rows: auto 1fr;
-      height: 100vh;
-    }
-    header {
-      background: #0f172a;
-      border-bottom: 1px solid #1e293b;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    h1 { margin: 0; font-size: 1.05rem; color: #34d399; }
-    .sub { font-size: 0.78rem; color: #94a3b8; }
-    button {
-      background: #10b981;
-      color: #052e16;
-      border: none;
-      border-radius: 9px;
-      padding: 8px 13px;
-      font-weight: 800;
-      font-size: 0.85rem;
-      cursor: pointer;
-    }
-    .layout {
-      display: grid;
-      grid-template-columns: 340px 1fr;
-      min-height: 0;
-    }
-    @media (max-width: 820px) {
-      .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-    }
-    .side {
-      background: #0f172a;
-      border-left: 1px solid #1e293b;
-      padding: 14px;
-      overflow-y: auto;
-    }
-    .card {
-      background: #080d19;
-      border: 1px solid #1e293b;
-      border-radius: 14px;
-      padding: 14px;
-    }
-    .cap-title { font-size: 1rem; font-weight: 800; margin-bottom: 6px; }
-    .badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 800;
-      margin-bottom: 8px;
-    }
-    .b-live { background: rgba(16,185,129,0.16); color: #34d399; }
-    .b-away { background: rgba(245,158,11,0.16); color: #fbbf24; }
-    .b-off { background: rgba(239,68,68,0.16); color: #f87171; }
-    .row-line { font-size: 0.84rem; color: #cbd5e1; line-height: 1.7; }
-    #map { width: 100%; height: 100%; }
-  </style>
-</head>
-<body>
-  <header>
-    <div>
-      <h1>الوسيط — شاشة المتابعة المباشرة</h1>
-      <div class="sub" id="localStatus">جاري المزامنة المستمرة مع JSONBin...</div>
-    </div>
-    <button type="button" id="refreshBtn">تحديث الآن</button>
-  </header>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الوسيط — لوحة متابعة أسطول الموصل</title>
 
-  <div class="layout">
-    <aside class="side">
-      <div class="card">
-        <div class="cap-title" id="capName">كابتن الاستلام مصطفى محمد</div>
-        <span class="badge b-off" id="capBadge">غير متصل</span>
-        <div class="row-line" id="capDetails">بانتظار أول إرسال مباشر...</div>
-      </div>
-    </aside>
-    <div id="map"></div>
-  </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    const CONFIG = {
-      binId: "6b07872413d2c8610b12db5e",
-      masterKey: "$2a$10$qOS1lm7Vo1tq9r.w/vTMoOnHrSJ7MKisq.6csaRUyFQ/7vRaV4PfS",
-      captainId: 1,
-      defaultName: "كابتن الاستلام مصطفى محمد",
-      center: [36.3489, 43.1577],
-      pollMs: 3000
-    };
-
-    const LOCAL_KEY = "waseet_fleet_captains_v1";
-    const channel = ("BroadcastChannel" in window) ? new BroadcastChannel("waseet_fleet_channel") : null;
-
-    const map = L.map("map").setView(CONFIG.center, 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap"
-    }).addTo(map);
-
-    let marker = L.marker(CONFIG.center).addTo(map);
-    let hasCenteredOnce = false;
-
-    const localStatus = document.getElementById("localStatus");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const capNameEl = document.getElementById("capName");
-    const capBadgeEl = document.getElementById("capBadge");
-    const capDetailsEl = document.getElementById("capDetails");
-
-    function statusArabic(st) {
-      if (st === "on_way") return "في الطريق";
-      if (st === "stopped") return "متوقف";
-      return "غير متصل";
-    }
-
-    function pickCaptain(list) {
-      if (!Array.isArray(list)) return null;
-      return list.find(x => Number(x && x.id) === CONFIG.captainId) || list[0] || null;
-    }
-
-    function readLocal() {
-      try {
-        const raw = localStorage.getItem(LOCAL_KEY);
-        const arr = raw ? JSON.parse(raw) : [];
-        return pickCaptain(arr);
-      } catch (_) {
-        return null;
-      }
-    }
-
-    async function fetchCloud() {
-      const url = `https://api.jsonbin.io/v3/b/${encodeURIComponent(CONFIG.binId)}/latest`;
-      const res = await fetch(url, {
-        method: "GET",
-        headers: { "X-Master-Key": CONFIG.masterKey }
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      const captains = (json && json.record && Array.isArray(json.record.captains)) ? json.record.captains : [];
-      return pickCaptain(captains);
-    }
-
-    function renderCaptain(rec, sourceLabel) {
-      const data = rec || {
-        name: CONFIG.defaultName,
-        lat: CONFIG.center[0],
-        lng: CONFIG.center[1],
-        speed: 0,
-        status: "offline",
-        remainingOrders: 0,
-        deliveredOrders: 0,
-        isLive: false,
-        leftPage: false,
-        accuracy: null,
-        lastUpdated: null
-      };
-
-      const name = (data.name && String(data.name).trim()) ? String(data.name).trim() : CONFIG.defaultName;
-      const lat = Number(data.lat || CONFIG.center[0]);
-      const lng = Number(data.lng || CONFIG.center[1]);
-      const accText = (typeof data.accuracy === "number" && !Number.isNaN(data.accuracy))
-        ? `±${Math.round(data.accuracy)}م`
-        : "—";
-
-      capNameEl.textContent = name;
-      if (data.leftPage && data.isLive) {
-        capBadgeEl.textContent = "غادر الصفحة";
-        capBadgeEl.className = "badge b-away";
-      } else if (data.isLive) {
-        capBadgeEl.textContent = "مباشر";
-        capBadgeEl.className = "badge b-live";
-      } else {
-        capBadgeEl.textContent = "غير متصل";
-        capBadgeEl.className = "badge b-off";
-      }
-
-      const timeStr = data.lastUpdated ? new Date(data.lastUpdated).toLocaleTimeString("ar-IQ") : "—";
-      capDetailsEl.innerHTML = `
-        حالة العمل: <strong>${statusArabic(data.status)}</strong><br/>
-        السرعة: <strong>${Math.round(data.speed || 0)} كم/س</strong> · الدقة: <strong>${accText}</strong><br/>
-        الطلبات المتبقية: <strong>${Number(data.remainingOrders || 0)}</strong> · المسلّمة: <strong>${Number(data.deliveredOrders || 0)}</strong><br/>
-        الإحداثيات: <strong>${lat.toFixed(6)}, ${lng.toFixed(6)}</strong><br/>
-        آخر تحديث: <strong>${timeStr}</strong>
-      `;
-
-      marker.setLatLng([lat, lng]).bindPopup(`<strong>${name}</strong><br/>${statusArabic(data.status)} · دقة ${accText}`);
-      if (!hasCenteredOnce && data.lastUpdated) {
-        map.setView([lat, lng], 15);
-        hasCenteredOnce = true;
-      }
-      localStatus.textContent = `${sourceLabel || "متصل بـ JSONBin"} · آخر فحص: ${new Date().toLocaleTimeString("ar-IQ")}`;
-    }
-
-    async function syncLoop() {
-      try {
-        const cloudRec = await fetchCloud();
-        renderCaptain(cloudRec, "متصل بـ JSONBin");
-      } catch (err) {
-        renderCaptain(readLocal(), `وضع محلي (${err.message})`);
-      }
-    }
-
-    if (channel) {
-      channel.onmessage = ev => {
-        if (ev.data && Array.isArray(ev.data.captains)) {
-          renderCaptain(pickCaptain(ev.data.captains), "تحديث فوري");
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
         }
-      };
-    }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+        }
+        #fleetMap {
+            height: 460px;
+            width: 100%;
+            border-radius: 16px;
+            z-index: 10;
+        }
+        .leaflet-control-attribution {
+            display: none !important;
+        }
+        .captain-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 9999px;
+            font-weight: 900;
+            font-size: 13px;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+        }
+        .pin-live { background: #10b981; }
+        .pin-away { background: #f59e0b; }
+        .pin-stopped { background: #ef4444; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
 
-    window.addEventListener("storage", ev => {
-      if (ev.key === LOCAL_KEY) renderCaptain(readLocal(), "تحديث محلي");
-    });
+    <!-- الشريط العلوي -->
+    <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-700 flex items-center justify-center">
+                <i class="fa-solid fa-radar text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-sm sm:text-base font-extrabold text-white">الوسيط — لوحة متابعة الكباتن في الموصل</h1>
+                <p class="text-[11px] text-slate-400">مراقبة البث المباشر وحالات الخروج من الرابط أو توقف الموقع</p>
+            </div>
+        </div>
 
-    refreshBtn.addEventListener("click", syncLoop);
-    syncLoop();
-    setInterval(syncLoop, CONFIG.pollMs);
-  </script>
+        <div class="flex items-center gap-2 text-xs font-bold">
+            <button onclick="setFilter('all')" id="flt-all" class="px-3 py-1.5 rounded-xl bg-sky-600 text-white">الكل (14)</button>
+            <button onclick="setFilter('live')" id="flt-live" class="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300">يبث مباشر</button>
+            <button onclick="setFilter('alert')" class="px-3 py-1.5 rounded-xl bg-slate-800 text-amber-300 border border-amber-500/30" id="flt-alert">خروج / توقف</button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 space-y-4">
+
+        <!-- شريط التنبيهات الفورية عند خروج كابتن أو توقف موقعه -->
+        <section id="alertsSection" class="hidden bg-amber-500/10 border border-amber-500/40 rounded-2xl p-3.5 space-y-2">
+            <div class="flex items-center justify-between">
+                <span class="text-xs sm:text-sm font-extrabold text-amber-300 flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    تنبيهات خروج من الرابط أو توقف الموقع
+                </span>
+                <span id="alertCountBadge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500/20 text-amber-200">0</span>
+            </div>
+            <div id="alertsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-xs"></div>
+        </section>
+
+        <!-- بطاقات الإحصاء السريع -->
+        <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
+                <span class="text-[11px] text-slate-400 block">يبث موقعاً الآن</span>
+                <span id="statLive" class="text-2xl font-black text-emerald-400">0</span>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
+                <span class="text-[11px] text-slate-400 block">خرج من الرابط / خلفية</span>
+                <span id="statLeftPage" class="text-2xl font-black text-amber-400">0</span>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
+                <span class="text-[11px] text-slate-400 block">متوقف / انقطع التحديث</span>
+                <span id="statStopped" class="text-2xl font-black text-rose-400">0</span>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
+                <span class="text-[11px] text-slate-400 block">إجمالي الطلبات المسلمة</span>
+                <span id="statDelivered" class="text-2xl font-black text-sky-400">0</span>
+            </div>
+        </section>
+
+        <!-- الخريطة الرئيسية وقائمة الكباتن -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-extrabold text-white">خريطة انتشار الكباتن (الموصل)</span>
+                    <div class="flex items-center gap-3 text-[11px] text-slate-300">
+                        <span><i class="fa-solid fa-circle text-emerald-500 ml-1"></i>بث مباشر</span>
+                        <span><i class="fa-solid fa-circle text-amber-500 ml-1"></i>خرج من الرابط</span>
+                        <span><i class="fa-solid fa-circle text-rose-500 ml-1"></i>متوقف / متأخر</span>
+                    </div>
+                </div>
+                <div id="fleetMap"></div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col max-h-[520px]">
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-xs font-extrabold text-white">حالة الكباتن الـ 14</span>
+                    <span id="lastSyncClock" class="text-[11px] font-mono text-slate-400">—</span>
+                </div>
+                <div id="captainsList" class="space-y-2 overflow-y-auto pr-1 flex-1"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="config.js" onerror="window.__MISSING_CONFIG__ = true;"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        const CAPTAINS_BASE = [
+            { id: 1, name: "كابتن الاستلام مصطفى محمد", lat: 36.3325, lng: 43.1120, delivered: 14, remaining: 3 },
+            { id: 2, name: "كابتن الاستلام محمد طارق", lat: 36.3640, lng: 43.1580, delivered: 19, remaining: 2 },
+            { id: 3, name: "كابتن الاستلام محمد زياد", lat: 36.3785, lng: 43.1490, delivered: 11, remaining: 4 },
+            { id: 4, name: "كابتن الاستلام احمد فراس", lat: 36.3690, lng: 43.1820, delivered: 16, remaining: 1 },
+            { id: 5, name: "كابتن الاستلام عجيب موفق", lat: 36.3575, lng: 43.1735, delivered: 22, remaining: 5 },
+            { id: 6, name: "كابتن الاستلام ريان سالم", lat: 36.3340, lng: 43.2080, delivered: 9, remaining: 4 },
+            { id: 7, name: "كابتن الاستلام عمار هاشم", lat: 36.3195, lng: 43.1280, delivered: 15, remaining: 2 },
+            { id: 8, name: "كابتن الاستلام يوسف فتح الله", lat: 36.3380, lng: 43.1365, delivered: 18, remaining: 3 },
+            { id: 9, name: "كابتن الاستلام عبدالله تحسين", lat: 36.3485, lng: 43.1645, delivered: 13, remaining: 2 },
+            { id: 10, name: "كابتن الاستلام احمد علي", lat: 36.1580, lng: 43.2520, delivered: 8, remaining: 3 },
+            { id: 11, name: "كابتن الاستلام محمد قحطان", lat: 35.8020, lng: 43.2890, delivered: 10, remaining: 0 },
+            { id: 12, name: "كابتن الاستلام عمر مازن", lat: 36.3420, lng: 43.1960, delivered: 17, remaining: 4 },
+            { id: 13, name: "كابتن الاستلام مصطفى مؤيد", lat: 36.3510, lng: 43.1855, delivered: 12, remaining: 3 },
+            { id: 14, name: "كابتن الاستلام قصي محمد", lat: 36.3855, lng: 43.1660, delivered: 21, remaining: 1 }
+        ];
+
+        const JSONBIN_CONFIG = {
+            binId: '6b07872413d2c8610b12db5e',
+            masterKey: '$2a$10$qOS1lm7Vo1tq9r.w/vTMoOnHrSJ7MKisq.6csaRUyFQ/7vRaV4PfS'
+        };
+
+        function resolveJsonBinConfig() {
+            const binId =
+                (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.JSONBIN_BIN_ID || APP_CONFIG.BIN_ID)) ||
+                (typeof CONFIG !== 'undefined' && (CONFIG.JSONBIN_BIN_ID || CONFIG.BIN_ID)) ||
+                window.JSONBIN_BIN_ID ||
+                JSONBIN_CONFIG.binId;
+
+            const masterKey =
+                (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.JSONBIN_MASTER_KEY || APP_CONFIG.MASTER_KEY || APP_CONFIG.JSONBIN_API_KEY)) ||
+                (typeof CONFIG !== 'undefined' && (CONFIG.JSONBIN_MASTER_KEY || CONFIG.MASTER_KEY || CONFIG.JSONBIN_API_KEY)) ||
+                window.JSONBIN_MASTER_KEY ||
+                JSONBIN_CONFIG.masterKey;
+
+            return { binId: String(binId || '').trim(), masterKey: String(masterKey || '').trim() };
+        }
+
+        const BIN_CFG = resolveJsonBinConfig();
+        const STALE_AFTER_SECONDS = 35;
+
+        const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('waseet_mosul_live_sync') : null;
+        let fleetMap = null;
+        const markers = {};
+        let currentFilter = 'all';
+        let captainsState = {};
+        let isPollingJsonBin = false;
+
+        function loadInitialState() {
+            CAPTAINS_BASE.forEach(base => {
+                let saved = null;
+                try {
+                    const raw = localStorage.getItem(`waseet_self_captain_${base.id}`);
+                    if (raw) saved = JSON.parse(raw);
+                } catch (e) {}
+
+                captainsState[base.id] = {
+                    id: base.id,
+                    name: base.name,
+                    lat: Number(saved?.lat ?? base.lat),
+                    lng: Number(saved?.lng ?? base.lng),
+                    speed: Number(saved?.speed ?? 0),
+                    accuracy: Number(saved?.accuracy ?? 10),
+                    status: saved?.status || 'offline',
+                    remainingOrders: Number(saved?.remainingOrders ?? base.remaining),
+                    deliveredOrders: Number(saved?.deliveredOrders ?? base.delivered),
+                    isLive: Boolean(saved?.isLive),
+                    leftPage: Boolean(saved?.leftPage),
+                    awaySince: saved?.awaySince || null,
+                    lastUpdated: saved?.lastUpdated || null
+                };
+            });
+        }
+
+        function ingestPayload(payload) {
+            if (!payload || !payload.id) return;
+            const prev = captainsState[payload.id] || {};
+            const nextTime = payload.lastUpdated ? new Date(payload.lastUpdated).getTime() : 0;
+            const prevTime = prev.lastUpdated ? new Date(prev.lastUpdated).getTime() : 0;
+
+            if (prevTime > 0 && nextTime > 0 && nextTime < prevTime) {
+                return;
+            }
+
+            const nextLat = Number(payload.lat ?? prev.lat);
+            const nextLng = Number(payload.lng ?? prev.lng);
+
+            captainsState[payload.id] = {
+                ...prev,
+                ...payload,
+                lat: Number.isFinite(nextLat) ? nextLat : prev.lat,
+                lng: Number.isFinite(nextLng) ? nextLng : prev.lng,
+                speed: Number(payload.speed ?? 0),
+                accuracy: Number(payload.accuracy ?? prev.accuracy ?? 10),
+                remainingOrders: Number(payload.remainingOrders ?? prev.remainingOrders ?? 0),
+                deliveredOrders: Number(payload.deliveredOrders ?? prev.deliveredOrders ?? 0),
+                isLive: Boolean(payload.isLive),
+                leftPage: Boolean(payload.leftPage),
+                awaySince: payload.awaySince ?? (payload.leftPage ? (prev.awaySince || payload.lastUpdated || new Date().toISOString()) : null),
+                lastUpdated: payload.lastUpdated || prev.lastUpdated || new Date().toISOString()
+            };
+
+            try {
+                localStorage.setItem(`waseet_self_captain_${payload.id}`, JSON.stringify(captainsState[payload.id]));
+            } catch (e) {}
+
+            renderDashboard();
+        }
+
+        async function pollJsonBin() {
+            if (!BIN_CFG.binId || isPollingJsonBin) return;
+            isPollingJsonBin = true;
+            try {
+                const url = `https://api.jsonbin.io/v3/b/${encodeURIComponent(BIN_CFG.binId)}/latest`;
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: BIN_CFG.masterKey ? { 'X-Master-Key': BIN_CFG.masterKey } : {}
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const captainsObj = data && data.record && data.record.captains;
+                if (captainsObj && typeof captainsObj === 'object') {
+                    Object.values(captainsObj).forEach(item => {
+                        if (item && item.id) ingestPayload(item);
+                    });
+                }
+            } catch (e) {}
+            finally {
+                isPollingJsonBin = false;
+            }
+        }
+
+        function evaluateCaptainHealth(cap) {
+            const nowMs = Date.now();
+            const lastMs = cap.lastUpdated ? new Date(cap.lastUpdated).getTime() : 0;
+            const ageSec = lastMs ? Math.max(0, Math.floor((nowMs - lastMs) / 1000)) : null;
+
+            if (cap.leftPage) {
+                const awayMs = cap.awaySince ? new Date(cap.awaySince).getTime() : lastMs;
+                const awaySec = awayMs ? Math.max(0, Math.floor((nowMs - awayMs) / 1000)) : 0;
+                return {
+                    code: 'left_page',
+                    label: 'خرج من الرابط',
+                    detail: `غادر الصفحة منذ ${formatDuration(awaySec)}`,
+                    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/40',
+                    pinClass: 'pin-away',
+                    isAlert: true
+                };
+            }
+
+            const isStale = ageSec === null || ageSec > STALE_AFTER_SECONDS;
+            if (!cap.isLive || cap.status === 'offline' || isStale) {
+                return {
+                    code: 'stopped',
+                    label: 'توقف الموقع',
+                    detail: ageSec !== null ? `آخر تحديث منذ ${formatDuration(ageSec)}` : 'لم يبدأ البث بعد',
+                    badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/40',
+                    pinClass: 'pin-stopped',
+                    isAlert: true
+                };
+            }
+
+            return {
+                code: 'live',
+                label: 'يبث مباشر',
+                detail: `تحديث منذ ${formatDuration(ageSec)} • ${cap.speed} كم/س`,
+                badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
+                pinClass: 'pin-live',
+                isAlert: false
+            };
+        }
+
+        function formatDuration(sec) {
+            if (sec < 60) return `${sec} ث`;
+            const mins = Math.floor(sec / 60);
+            const rem = sec % 60;
+            return `${mins} د ${rem} ث`;
+        }
+
+        function setFilter(nextFilter) {
+            currentFilter = nextFilter;
+            ['all', 'live', 'alert'].forEach(key => {
+                const btn = document.getElementById(`flt-${key}`);
+                if (!btn) return;
+                btn.className = (key === nextFilter)
+                    ? 'px-3 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold'
+                    : 'px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold';
+            });
+            renderDashboard();
+        }
+
+        function renderDashboard() {
+            const list = Object.values(captainsState);
+            let liveCount = 0;
+            let leftPageCount = 0;
+            let stoppedCount = 0;
+            let totalDelivered = 0;
+            const alerts = [];
+
+            const listContainer = document.getElementById('captainsList');
+            listContainer.innerHTML = '';
+
+            list.forEach(cap => {
+                totalDelivered += Number(cap.deliveredOrders) || 0;
+                const health = evaluateCaptainHealth(cap);
+
+                if (health.code === 'live') liveCount++;
+                else if (health.code === 'left_page') {
+                    leftPageCount++;
+                    alerts.push({ cap, health });
+                } else {
+                    stoppedCount++;
+                    alerts.push({ cap, health });
+                }
+
+                if (markers[cap.id]) {
+                    markers[cap.id].setLatLng([cap.lat, cap.lng]);
+                    markers[cap.id].setIcon(L.divIcon({
+                        className: '',
+                        html: `<div class="captain-pin ${health.pinClass}">${cap.id}</div>`,
+                        iconSize: [34, 34],
+                        iconAnchor: [17, 17]
+                    }));
+                }
+
+                const showItem =
+                    currentFilter === 'all' ||
+                    (currentFilter === 'live' && health.code === 'live') ||
+                    (currentFilter === 'alert' && health.isAlert);
+
+                if (showItem) {
+                    const card = document.createElement('button');
+                    card.type = 'button';
+                    card.onclick = () => {
+                        if (fleetMap) fleetMap.setView([cap.lat, cap.lng], 15);
+                    };
+                    card.className = 'w-full text-right bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl p-2.5 transition flex items-center justify-between gap-2';
+                    card.innerHTML = `
+                        <div class="min-w-0">
+                            <div class="text-xs font-extrabold text-white truncate">${cap.id}. ${cap.name}</div>
+                            <div class="text-[11px] text-slate-400 truncate mt-0.5">${health.detail}</div>
+                        </div>
+                        <div class="flex flex-col items-end shrink-0 gap-1">
+                            <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold border ${health.badgeClass}">${health.label}</span>
+                            <span class="text-[10px] text-slate-400">عهدة: ${cap.remainingOrders} | مُسلّم: ${cap.deliveredOrders}</span>
+                        </div>
+                    `;
+                    listContainer.appendChild(card);
+                }
+            });
+
+            document.getElementById('statLive').textContent = liveCount;
+            document.getElementById('statLeftPage').textContent = leftPageCount;
+            document.getElementById('statStopped').textContent = stoppedCount;
+            document.getElementById('statDelivered').textContent = totalDelivered;
+            document.getElementById('lastSyncClock').textContent = new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const alertsSection = document.getElementById('alertsSection');
+            const alertsList = document.getElementById('alertsList');
+            const alertCountBadge = document.getElementById('alertCountBadge');
+
+            if (alerts.length > 0) {
+                alertsSection.classList.remove('hidden');
+                alertCountBadge.textContent = alerts.length;
+                alertsList.innerHTML = alerts.map(({ cap, health }) => `
+                    <div class="bg-slate-950/90 border border-amber-500/30 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="font-bold text-amber-200 truncate">${cap.name}</div>
+                            <div class="text-[11px] text-slate-300">${health.label} — ${health.detail}</div>
+                        </div>
+                        <button onclick="if(fleetMap) fleetMap.setView([${cap.lat}, ${cap.lng}], 15)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-white shrink-0">
+                            تحديد
+                        </button>
+                    </div>
+                `).join('');
+            } else {
+                alertsSection.classList.add('hidden');
+                alertsList.innerHTML = '';
+            }
+        }
+
+        function initMonitoring() {
+            loadInitialState();
+            fleetMap = L.map('fleetMap', { center: [36.345, 43.155], zoom: 12 });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(fleetMap);
+
+            Object.values(captainsState).forEach(cap => {
+                const health = evaluateCaptainHealth(cap);
+                markers[cap.id] = L.marker([cap.lat, cap.lng], {
+                    icon: L.divIcon({
+                        className: '',
+                        html: `<div class="captain-pin ${health.pinClass}">${cap.id}</div>`,
+                        iconSize: [34, 34],
+                        iconAnchor: [17, 17]
+                    })
+                }).addTo(fleetMap).bindPopup(`<strong>${cap.name}</strong><br>${health.label}`);
+            });
+
+            if (syncChannel) {
+                syncChannel.onmessage = (event) => {
+                    if (event.data && event.data.type === 'DRIVER_LOCATION_UPDATE') {
+                        ingestPayload(event.data.payload);
+                    }
+                };
+            }
+
+            window.addEventListener('storage', (event) => {
+                if (event.key && event.key.startsWith('waseet_self_captain_') && event.newValue) {
+                    try {
+                        ingestPayload(JSON.parse(event.newValue));
+                    } catch (e) {}
+                }
+            });
+
+            renderDashboard();
+            pollJsonBin();
+            setInterval(pollJsonBin, 4000);
+            setInterval(renderDashboard, 5000);
+        }
+
+        window.addEventListener('DOMContentLoaded', initMonitoring);
+    </script>
 </body>
 </html>
