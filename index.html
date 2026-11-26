@@ -13,37 +13,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        cairo: ['Cairo', 'sans-serif'],
-                    }
-                }
-            }
+            theme: { extend: { fontFamily: { cairo: ['Cairo', 'sans-serif'] } } }
         }
     </script>
     <style>
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #090d16;
-            color: #f8fafc;
-        }
-        #miniMap {
-            height: 220px;
-            width: 100%;
-            border-radius: 14px;
-            z-index: 10;
-        }
-        .leaflet-control-attribution {
-            display: none !important;
-        }
+        body { font-family: 'Cairo', sans-serif; background-color: #090d16; color: #f8fafc; }
+        #miniMap { height: 220px; width: 100%; border-radius: 14px; z-index: 10; }
+        .leaflet-control-attribution { display: none !important; }
     </style>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#090d16">
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
 
-    <!-- الشريط العلوي -->
     <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between gap-2 sticky top-0 z-30">
         <div class="flex items-center gap-2.5 min-w-0">
             <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shrink-0">
@@ -67,7 +49,6 @@
 
     <main class="flex-1 max-w-xl w-full mx-auto p-4 space-y-4">
 
-        <!-- تثبيت حساب الكابتن لمرة واحدة -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-extrabold text-emerald-400">
@@ -77,21 +58,17 @@
                 <span id="wakeLockIndicator" class="text-[11px] text-slate-400">إبقاء الشاشة: تلقائي</span>
             </div>
 
-            <!-- شاشة الاختيار والتثبيت لأول مرة فقط -->
             <div id="setupAccountBox" class="space-y-2.5">
                 <p class="text-[11px] text-slate-400">
                     اختر اسمك مرة واحدة فقط لتثبيته على هذا الجهاز. بعد التثبيت سيظهر حسابك فقط ولن يُسمح بتغييره من داخل الواجهة.
                 </p>
-                <select id="captainSelect" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none">
-                    <!-- يتم تعبئتها تلقائياً -->
-                </select>
+                <select id="captainSelect" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none"></select>
                 <button id="lockCaptainBtn" onclick="confirmAndLockCaptain()" class="w-full py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-lock"></i>
                     <span>تثبيت حسابي بشكل دائم</span>
                 </button>
             </div>
 
-            <!-- عرض الحساب المثبّت بعد القفل -->
             <div id="lockedAccountBox" class="hidden bg-slate-950 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between gap-2">
                 <div class="min-w-0">
                     <span class="text-[10px] text-emerald-400 font-bold block">حساب مثبّت ومقفل</span>
@@ -114,7 +91,6 @@
             </div>
         </section>
 
-        <!-- تنبيه الاستخدام الطبيعي للهاتف -->
         <div id="backgroundHintBanner" class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 text-xs text-amber-200 flex items-start gap-2.5">
             <i class="fa-solid fa-circle-info text-amber-400 mt-0.5 shrink-0"></i>
             <div>
@@ -125,7 +101,6 @@
             </div>
         </div>
 
-        <!-- وضع تحديد الموقع والسرعة -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div class="flex items-center justify-between gap-2">
                 <span class="text-xs font-extrabold text-sky-400">
@@ -142,7 +117,6 @@
             </p>
         </section>
 
-        <!-- الحالة وعداد الطلبات -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <span class="text-xs font-extrabold text-amber-400 block">
                 <i class="fa-solid fa-sliders ml-1"></i>
@@ -164,7 +138,6 @@
                         <button onclick="adjustRemaining(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">+</button>
                     </div>
                 </div>
-
                 <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
                     <span class="text-[11px] text-slate-400 block">الطلبات المُسلّمة</span>
                     <div class="flex items-center justify-between mt-1.5">
@@ -176,7 +149,6 @@
             </div>
         </section>
 
-        <!-- الخريطة المصغرة وسجل الإحداثيات -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div class="flex items-center justify-between text-xs">
                 <span class="font-extrabold text-white">معاينة الموقع الحالي</span>
@@ -213,11 +185,6 @@
 
         const LOCKED_CAPTAIN_KEY = 'waseet_locked_captain_id_v1';
 
-        const JSONBIN_CONFIG = {
-            binId: '6b07872413d2c8610b12db5e',
-            masterKey: '$2a$10$qOS1lm7Vo1tq9r.w/vTMoOnHrSJ7MKisq.6csaRUyFQ/7vRaV4PfS'
-        };
-
         function resolveEndpoint() {
             if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.ENDPOINT) return APP_CONFIG.ENDPOINT;
             if (typeof CONFIG !== 'undefined' && CONFIG.ENDPOINT) return CONFIG.ENDPOINT;
@@ -229,17 +196,11 @@
         function resolveJsonBinConfig() {
             const binId =
                 (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.JSONBIN_BIN_ID || APP_CONFIG.BIN_ID)) ||
-                (typeof CONFIG !== 'undefined' && (CONFIG.JSONBIN_BIN_ID || CONFIG.BIN_ID)) ||
-                window.JSONBIN_BIN_ID ||
-                JSONBIN_CONFIG.binId;
-
+                window.JSONBIN_BIN_ID || '';
             const masterKey =
-                (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.JSONBIN_MASTER_KEY || APP_CONFIG.MASTER_KEY || APP_CONFIG.JSONBIN_API_KEY)) ||
-                (typeof CONFIG !== 'undefined' && (CONFIG.JSONBIN_MASTER_KEY || CONFIG.MASTER_KEY || CONFIG.JSONBIN_API_KEY)) ||
-                window.JSONBIN_MASTER_KEY ||
-                JSONBIN_CONFIG.masterKey;
-
-            return { binId: String(binId || '').trim(), masterKey: String(masterKey || '').trim() };
+                (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.JSONBIN_MASTER_KEY || APP_CONFIG.MASTER_KEY)) ||
+                window.JSONBIN_MASTER_KEY || '';
+            return { binId: String(binId).trim(), masterKey: String(masterKey).trim() };
         }
 
         const ENDPOINT_URL = resolveEndpoint();
@@ -268,21 +229,9 @@
         function sanitizeCoords(latRaw, lngRaw, fallbackLat, fallbackLng) {
             let lat = Number(latRaw);
             let lng = Number(lngRaw);
-
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-                return { lat: Number(fallbackLat), lng: Number(fallbackLng) };
-            }
-
-            if (Math.abs(lat) > 40 && Math.abs(lng) <= 40) {
-                const tmp = lat;
-                lat = lng;
-                lng = tmp;
-            }
-
-            if (lat < -90 || lat > 90 || lng < -180 || lng > 180 || (lat === 0 && lng === 0)) {
-                return { lat: Number(fallbackLat), lng: Number(fallbackLng) };
-            }
-
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { lat: Number(fallbackLat), lng: Number(fallbackLng) };
+            if (Math.abs(lat) > 40 && Math.abs(lng) <= 40) { const tmp = lat; lat = lng; lng = tmp; }
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180 || (lat === 0 && lng === 0)) return { lat: Number(fallbackLat), lng: Number(fallbackLng) };
             return { lat, lng };
         }
 
@@ -292,14 +241,8 @@
                 const rawCap = params.get('cap') || params.get('captain') || params.get('id');
                 if (!rawCap) return null;
                 const clean = decodeURIComponent(String(rawCap)).trim().toLowerCase();
-                return CAPTAINS_LIST.find(c =>
-                    String(c.id) === clean ||
-                    c.name.toLowerCase() === clean ||
-                    c.name.toLowerCase().includes(clean)
-                ) || null;
-            } catch (e) {
-                return null;
-            }
+                return CAPTAINS_LIST.find(c => String(c.id) === clean || c.name.toLowerCase() === clean || c.name.toLowerCase().includes(clean)) || null;
+            } catch (e) { return null; }
         }
 
         function isCaptainLocked() {
@@ -312,7 +255,6 @@
             const lockedBox = document.getElementById('lockedAccountBox');
             const lockedNameEl = document.getElementById('lockedCaptainNameText');
             const startBtn = document.getElementById('startStreamBtn');
-
             if (isCaptainLocked()) {
                 setupBox.classList.add('hidden');
                 lockedBox.classList.remove('hidden');
@@ -330,22 +272,13 @@
         function confirmAndLockCaptain() {
             if (isCaptainLocked()) return;
             const select = document.getElementById('captainSelect');
-            const chosenId = select.value;
-            const chosen = CAPTAINS_LIST.find(c => String(c.id) === String(chosenId));
+            const chosen = CAPTAINS_LIST.find(c => String(c.id) === String(select.value));
             if (!chosen) return;
-
-            const ok = window.confirm(`هل أنت متأكد من تثبيت الحساب على: "${chosen.name}"؟ بعد التثبيت لن يُسمح بتغييره من داخل الواجهة.`);
-            if (!ok) return;
-
+            if (!window.confirm(`هل أنت متأكد من تثبيت الحساب على: "${chosen.name}"؟`)) return;
             localStorage.setItem(LOCKED_CAPTAIN_KEY, String(chosen.id));
             localStorage.setItem('waseet_selected_captain_id', String(chosen.id));
             loadCaptainProfile(chosen.id);
-
-            if (miniMap && miniMarker) {
-                miniMarker.setLatLng([currentLat, currentLng]);
-                miniMap.setView([currentLat, currentLng], 14);
-            }
-
+            if (miniMap && miniMarker) { miniMarker.setLatLng([currentLat, currentLng]); miniMap.setView([currentLat, currentLng], 14); }
             syncAccountLockView();
             updateUI();
             appendLog(`تم تثبيت الحساب بشكل دائم على: ${currentCaptain.name}`);
@@ -355,10 +288,8 @@
         function initCaptainApp() {
             const select = document.getElementById('captainSelect');
             select.innerHTML = CAPTAINS_LIST.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
             const urlCaptain = getLockedCaptainFromUrl();
             const lockedId = localStorage.getItem(LOCKED_CAPTAIN_KEY);
-
             if (urlCaptain) {
                 localStorage.setItem(LOCKED_CAPTAIN_KEY, String(urlCaptain.id));
                 localStorage.setItem('waseet_selected_captain_id', String(urlCaptain.id));
@@ -370,13 +301,11 @@
                 loadCaptainProfile(CAPTAINS_LIST[0].id);
                 select.value = CAPTAINS_LIST[0].id;
             }
-
             miniMap = L.map('miniMap', { center: [currentLat, currentLng], zoom: 14, zoomControl: false });
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMap);
             miniMarker = L.marker([currentLat, currentLng]).addTo(miniMap);
             syncAccountLockView();
             updateUI();
-
             if (urlCaptain && isCaptainLocked()) {
                 appendLog(`تم التثبيت تلقائياً عبر الرابط المخصص: ${currentCaptain.name}`);
                 startLiveTracking();
@@ -390,20 +319,13 @@
                 const rawSelf = localStorage.getItem(`waseet_self_captain_${base.id}`);
                 if (rawSelf) existing = JSON.parse(rawSelf) || {};
             } catch (e) {}
-
-            currentCaptain = {
-                ...base,
-                delivered: existing.deliveredOrders ?? base.delivered,
-                remaining: existing.remainingOrders ?? base.remaining
-            };
+            currentCaptain = { ...base, delivered: existing.deliveredOrders ?? base.delivered, remaining: existing.remainingOrders ?? base.remaining };
             const coords = sanitizeCoords(existing.lat, existing.lng, base.lat, base.lng);
-            currentLat = coords.lat;
-            currentLng = coords.lng;
+            currentLat = coords.lat; currentLng = coords.lng;
             currentSpeed = Number(existing.speed ?? 0) || 0;
             currentAccuracy = Number(existing.accuracy ?? 10) || 10;
             currentStatus = existing.status || 'active';
-            leftPage = false;
-            awaySince = null;
+            leftPage = false; awaySince = null;
             localStorage.setItem('waseet_selected_captain_id', String(base.id));
         }
 
@@ -413,119 +335,63 @@
             const acc = Math.max(1, Math.round(Number(pos.coords.accuracy) || 10));
             const now = Date.now();
             const isRecentOrBetter = acc <= currentAccuracy + 25 || (now - lastAcceptedGpsAt) > 12000;
-
-            if (!forceAccept && !isRecentOrBetter && lastAcceptedGpsAt > 0) {
-                return false;
-            }
-
-            currentLat = coords.lat;
-            currentLng = coords.lng;
-            currentAccuracy = acc;
-            lastAcceptedGpsAt = now;
-
-            const rawSpeedKmh = (typeof pos.coords.speed === 'number' && Number.isFinite(pos.coords.speed) && pos.coords.speed >= 0)
-                ? Math.round(pos.coords.speed * 3.6)
-                : 0;
+            if (!forceAccept && !isRecentOrBetter && lastAcceptedGpsAt > 0) return false;
+            currentLat = coords.lat; currentLng = coords.lng; currentAccuracy = acc; lastAcceptedGpsAt = now;
+            const rawSpeedKmh = (typeof pos.coords.speed === 'number' && Number.isFinite(pos.coords.speed) && pos.coords.speed >= 0) ? Math.round(pos.coords.speed * 3.6) : 0;
             currentSpeed = currentStatus === 'active' ? rawSpeedKmh : 0;
-
-            if (miniMarker && miniMap) {
-                miniMarker.setLatLng([currentLat, currentLng]);
-                miniMap.panTo([currentLat, currentLng]);
-            }
+            if (miniMarker && miniMap) { miniMarker.setLatLng([currentLat, currentLng]); miniMap.panTo([currentLat, currentLng]); }
             return true;
         }
 
         function setMode(nextMode) {
             mode = nextMode;
-            document.getElementById('mode-gps').className = nextMode === 'gps'
-                ? 'px-3 py-1 rounded-lg font-bold bg-sky-600 text-white'
-                : 'px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300';
-            document.getElementById('mode-sim').className = nextMode === 'sim'
-                ? 'px-3 py-1 rounded-lg font-bold bg-sky-600 text-white'
-                : 'px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300';
-
-            if (isStreaming) {
-                stopLiveTracking(true);
-                startLiveTracking();
-            }
+            document.getElementById('mode-gps').className = nextMode === 'gps' ? 'px-3 py-1 rounded-lg font-bold bg-sky-600 text-white' : 'px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300';
+            document.getElementById('mode-sim').className = nextMode === 'sim' ? 'px-3 py-1 rounded-lg font-bold bg-sky-600 text-white' : 'px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-300';
+            if (isStreaming) { stopLiveTracking(true); startLiveTracking(); }
         }
 
         function setCaptainStatus(st) {
             currentStatus = st;
             if (st === 'stopped' || st === 'offline') currentSpeed = 0;
             ['active', 'stopped', 'offline'].forEach(k => {
-                const el = document.getElementById(`st-${k}`);
-                if (!el) return;
-                el.className = (k === st)
-                    ? 'py-2 px-2 rounded-xl font-bold bg-emerald-600 text-white'
-                    : 'py-2 px-2 rounded-xl font-bold bg-slate-800 text-slate-300';
+                const el = document.getElementById(`st-${k}`); if (!el) return;
+                el.className = (k === st) ? 'py-2 px-2 rounded-xl font-bold bg-emerald-600 text-white' : 'py-2 px-2 rounded-xl font-bold bg-slate-800 text-slate-300';
             });
             publishUpdate(true);
         }
 
-        function adjustRemaining(delta) {
-            currentCaptain.remaining = Math.max(0, (Number(currentCaptain.remaining) || 0) + delta);
-            updateUI();
-            publishUpdate(true);
-        }
-
-        function adjustDelivered(delta) {
-            currentCaptain.delivered = Math.max(0, (Number(currentCaptain.delivered) || 0) + delta);
-            updateUI();
-            publishUpdate(true);
-        }
+        function adjustRemaining(delta) { currentCaptain.remaining = Math.max(0, (Number(currentCaptain.remaining) || 0) + delta); updateUI(); publishUpdate(true); }
+        function adjustDelivered(delta) { currentCaptain.delivered = Math.max(0, (Number(currentCaptain.delivered) || 0) + delta); updateUI(); publishUpdate(true); }
 
         async function requestWakeLock() {
             if ('wakeLock' in navigator) {
-                try {
-                    wakeLockSentinel = await navigator.wakeLock.request('screen');
-                    document.getElementById('wakeLockIndicator').textContent = 'إبقاء الشاشة: مفعّل';
-                } catch (e) {}
+                try { wakeLockSentinel = await navigator.wakeLock.request('screen'); document.getElementById('wakeLockIndicator').textContent = 'إبقاء الشاشة: مفعّل'; } catch (e) {}
             }
         }
 
         function sampleImmediateGpsAndPublish(forceAccept = true) {
-            if (!('geolocation' in navigator)) {
-                publishUpdate(true);
-                return;
-            }
+            if (!('geolocation' in navigator)) { publishUpdate(true); return; }
             navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    applyAccuratePosition(pos, forceAccept);
-                    publishUpdate(true);
-                },
-                () => {
-                    publishUpdate(true);
-                },
+                (pos) => { applyAccuratePosition(pos, forceAccept); publishUpdate(true); },
+                () => { publishUpdate(true); },
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
             );
         }
 
         async function startLiveTracking() {
-            if (!isCaptainLocked()) {
-                appendLog('يرجى تثبيت حساب الكابتن أولاً قبل بدء البث.');
-                return;
-            }
+            if (!isCaptainLocked()) { appendLog('يرجى تثبيت حساب الكابتن أولاً قبل بدء البث.'); return; }
             stopLiveTracking(true);
-            isStreaming = true;
-            leftPage = false;
-            awaySince = null;
-            lastAcceptedGpsAt = 0;
+            isStreaming = true; leftPage = false; awaySince = null; lastAcceptedGpsAt = 0;
             if (currentStatus === 'offline') currentStatus = 'active';
             await requestWakeLock();
             updateUI();
+            publishUpdate(true);
 
             if (mode === 'gps' && 'geolocation' in navigator) {
                 sampleImmediateGpsAndPublish(true);
                 watchId = navigator.geolocation.watchPosition(
-                    (pos) => {
-                        if (applyAccuratePosition(pos, false)) {
-                            publishUpdate(false);
-                        }
-                    },
-                    (err) => {
-                        appendLog(`تنبيه GPS: ${err.message}`);
-                    },
+                    (pos) => { if (applyAccuratePosition(pos, false)) publishUpdate(false); },
+                    (err) => { appendLog(`تنبيه GPS: ${err.message}`); },
                     { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
                 );
             } else {
@@ -537,130 +403,66 @@
                     currentLng += Math.sin(heading) * 0.00035;
                     currentSpeed = Math.floor(Math.random() * 20) + 32;
                     currentAccuracy = 6;
-                    if (miniMarker && miniMap) {
-                        miniMarker.setLatLng([currentLat, currentLng]);
-                        miniMap.panTo([currentLat, currentLng]);
-                    }
+                    if (miniMarker && miniMap) { miniMarker.setLatLng([currentLat, currentLng]); miniMap.panTo([currentLat, currentLng]); }
                     publishUpdate(false);
                 }, 2500);
             }
         }
 
         function stopLiveTracking(silent = false) {
-            isStreaming = false;
-            currentSpeed = 0;
-            if (watchId !== null && 'geolocation' in navigator) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-            }
-            if (simTimer !== null) {
-                clearInterval(simTimer);
-                simTimer = null;
-            }
-            if (wakeLockSentinel) {
-                wakeLockSentinel.release().catch(() => {});
-                wakeLockSentinel = null;
-            }
-            if (!silent) {
-                updateUI();
-                publishUpdate(true);
-            }
+            isStreaming = false; currentSpeed = 0;
+            if (watchId !== null && 'geolocation' in navigator) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+            if (simTimer !== null) { clearInterval(simTimer); simTimer = null; }
+            if (wakeLockSentinel) { wakeLockSentinel.release().catch(() => {}); wakeLockSentinel = null; }
+            if (!silent) { updateUI(); publishUpdate(true); }
         }
 
         async function syncPayloadToJsonBin(payload) {
             if (!BIN_CFG.binId) return;
             const baseUrl = `https://api.jsonbin.io/v3/b/${encodeURIComponent(BIN_CFG.binId)}`;
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-            if (BIN_CFG.masterKey) {
-                headers['X-Master-Key'] = BIN_CFG.masterKey;
-            }
+            const headers = { 'Content-Type': 'application/json' };
+            if (BIN_CFG.masterKey) headers['X-Master-Key'] = BIN_CFG.masterKey;
 
             const getRes = await fetch(`${baseUrl}/latest?meta=false&t=${Date.now()}`, {
-                method: 'GET',
-                cache: 'no-store',
+                method: 'GET', cache: 'no-store',
                 headers: BIN_CFG.masterKey ? { 'X-Master-Key': BIN_CFG.masterKey } : {}
             });
-            if (!getRes.ok) {
-                throw new Error(`JSONBin GET ${getRes.status}`);
-            }
-
+            if (!getRes.ok) throw new Error(`JSONBin GET ${getRes.status}`);
             const data = await getRes.json();
-            const record = (data && typeof data.record === 'object' && data.record !== null) ? { ...data.record } : {};
+            const record = (data && typeof data === 'object' && !Array.isArray(data)) ? { ...data } : {};
             const captainsMap = (record.captains && typeof record.captains === 'object') ? { ...record.captains } : {};
             captainsMap[String(payload.id)] = payload;
+            const nextRecord = { ...record, captains: captainsMap, updatedAt: payload.lastUpdated };
 
-            const nextRecord = {
-                ...record,
-                captains: captainsMap,
-                updatedAt: payload.lastUpdated
-            };
-
-            const putRes = await fetch(baseUrl, {
-                method: 'PUT',
-                headers,
-                body: JSON.stringify(nextRecord)
-            });
-            if (!putRes.ok) {
-                throw new Error(`JSONBin PUT ${putRes.status}`);
-            }
+            const putRes = await fetch(baseUrl, { method: 'PUT', headers, body: JSON.stringify(nextRecord) });
+            if (!putRes.ok) throw new Error(`JSONBin PUT ${putRes.status}`);
             lastJsonBinSyncAt = Date.now();
         }
 
         function enqueueJsonBinSync(payload, force = false) {
             if (!BIN_CFG.binId) return;
             const now = Date.now();
-            if (!force && (now - lastJsonBinSyncAt) < 2200) {
-                return;
-            }
-            jsonBinQueue = jsonBinQueue
-                .then(() => syncPayloadToJsonBin(payload))
-                .catch((err) => {
-                    appendLog(`JSONBin: ${err.message}`);
-                });
+            if (!force && (now - lastJsonBinSyncAt) < 2200) return;
+            jsonBinQueue = jsonBinQueue.then(() => syncPayloadToJsonBin(payload)).catch((err) => { appendLog(`JSONBin: ${err.message}`); });
         }
 
         function publishUpdate(forceBinSync = false) {
             const coords = sanitizeCoords(currentLat, currentLng, currentCaptain.lat, currentCaptain.lng);
-            currentLat = coords.lat;
-            currentLng = coords.lng;
-
+            currentLat = coords.lat; currentLng = coords.lng;
             const payload = {
-                id: currentCaptain.id,
-                name: currentCaptain.name,
-                lat: currentLat,
-                lng: currentLng,
-                speed: currentSpeed,
-                accuracy: currentAccuracy,
-                status: currentStatus,
+                id: currentCaptain.id, name: currentCaptain.name,
+                lat: currentLat, lng: currentLng,
+                speed: currentSpeed, accuracy: currentAccuracy, status: currentStatus,
                 remainingOrders: Number(currentCaptain.remaining) || 0,
                 deliveredOrders: Number(currentCaptain.delivered) || 0,
                 isLive: isStreaming && currentStatus !== 'offline' && !leftPage,
-                leftPage: leftPage,
-                awaySince: awaySince,
+                leftPage: leftPage, awaySince: awaySince,
                 lastUpdated: new Date().toISOString()
             };
-
-            try {
-                localStorage.setItem(`waseet_self_captain_${payload.id}`, JSON.stringify(payload));
-            } catch (e) {}
-
-            if (syncChannel) {
-                syncChannel.postMessage({ type: 'DRIVER_LOCATION_UPDATE', payload });
-            }
-
-            if (ENDPOINT_URL) {
-                fetch(ENDPOINT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                }).catch(() => {});
-            }
-
+            try { localStorage.setItem(`waseet_self_captain_${payload.id}`, JSON.stringify(payload)); } catch (e) {}
+            if (syncChannel) syncChannel.postMessage({ type: 'DRIVER_LOCATION_UPDATE', payload });
+            if (ENDPOINT_URL) fetch(ENDPOINT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {});
             enqueueJsonBinSync(payload, forceBinSync);
-
             updateUI();
             appendLog(`${payload.name} | ${payload.lat.toFixed(5)}, ${payload.lng.toFixed(5)} (±${payload.accuracy}م) | ${payload.leftPage ? 'خرج من الصفحة' : payload.speed + ' كم/س'}`);
         }
@@ -670,7 +472,6 @@
             document.getElementById('remainingCount').textContent = currentCaptain.remaining;
             document.getElementById('deliveredCount').textContent = currentCaptain.delivered;
             document.getElementById('telemetrySummary').textContent = `السرعة: ${currentSpeed} كم/س • الدقة: ${currentAccuracy} م`;
-
             const badge = document.getElementById('streamStatusBadge');
             if (isStreaming && currentStatus !== 'offline' && !leftPage) {
                 badge.textContent = 'يبث الآن';
@@ -702,15 +503,11 @@
 
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState === 'visible') {
-                leftPage = false;
-                awaySince = null;
+                leftPage = false; awaySince = null;
                 if (isStreaming) {
                     await requestWakeLock();
-                    if (mode === 'gps' && 'geolocation' in navigator) {
-                        sampleImmediateGpsAndPublish(true);
-                    } else {
-                        publishUpdate(true);
-                    }
+                    if (mode === 'gps' && 'geolocation' in navigator) sampleImmediateGpsAndPublish(true);
+                    else publishUpdate(true);
                     appendLog('تمت استعادة البث والتحديث الفوري للموقع');
                 }
             } else if (isStreaming) {
@@ -724,11 +521,8 @@
 
         setInterval(() => {
             if (isStreaming && currentStatus !== 'offline' && !leftPage) {
-                if (mode === 'gps' && 'geolocation' in navigator) {
-                    sampleImmediateGpsAndPublish(false);
-                } else {
-                    publishUpdate(true);
-                }
+                if (mode === 'gps' && 'geolocation' in navigator) sampleImmediateGpsAndPublish(false);
+                else publishUpdate(true);
             }
         }, 5000);
 
