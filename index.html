@@ -199,7 +199,7 @@
             { id: 14, name: "كابتن الاستلام قصي محمد", lat: 36.3855, lng: 43.1660, delivered: 21, remaining: 1 }
         ];
 
-        const LOCKED_CAPTAIN_KEY = 'waseet_locked_captain_id_v1';
+        const LOCKED_CAPTAIN_KEY = 'waseet_locked_captain_id_v9';
 
         function resolveEndpoint() {
             if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.ENDPOINT) return APP_CONFIG.ENDPOINT;
@@ -304,7 +304,7 @@
         function initCaptainApp() {
             const select = document.getElementById('captainSelect');
             select.innerHTML = CAPTAINS_LIST.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-            const urlCaptain = getLockedCaptainFromUrl();
+            const urlCaptain = null ;
             const lockedId = localStorage.getItem(LOCKED_CAPTAIN_KEY);
             if (urlCaptain) {
                 localStorage.setItem(LOCKED_CAPTAIN_KEY, String(urlCaptain.id));
