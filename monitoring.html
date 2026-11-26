@@ -178,7 +178,7 @@
         }
 
         const BIN_CFG = resolveJsonBinConfig();
-        const STALE_AFTER_SECONDS = 45;
+        const STALE_AFTER_SECONDS = 35;
 
         const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('waseet_mosul_live_sync') : null;
         let fleetMap = null;
@@ -186,86 +186,6 @@
         let currentFilter = 'all';
         let captainsState = {};
         let isPollingJsonBin = false;
-
-        function parseTimestampMs(val) {
-            if (!val) return 0;
-            if (typeof val === 'number' && Number.isFinite(val)) {
-                return val < 1e12 ? val * 1000 : val;
-            }
-            const parsed = Date.parse(String(val));
-            return Number.isFinite(parsed) ? parsed : 0;
-        }
-
-        function normalizeCoords(latRaw, lngRaw, fallbackLat, fallbackLng) {
-            let lat = Number(latRaw);
-            let lng = Number(lngRaw);
-
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-                return { lat: Number(fallbackLat), lng: Number(fallbackLng) };
-            }
-
-            // تصحيح تلقائي في حال كانت خط العرض والطول معكوستين (مثلاً 43.15 بدلاً من 36.35)
-            if (Math.abs(lat) > 40 && Math.abs(lng) <= 40) {
-                const tmp = lat;
-                lat = lng;
-                lng = tmp;
-            }
-
-            if (lat < -90 || lat > 90 || lng < -180 || lng > 180 || (lat === 0 && lng === 0)) {
-                return { lat: Number(fallbackLat), lng: Number(fallbackLng) };
-            }
-
-            return { lat, lng };
-        }
-
-        function matchCaptainId(item, fallbackKey) {
-            const rawId = item?.id ?? item?.captainId ?? item?.captain_id ?? fallbackKey;
-            if (rawId !== undefined && rawId !== null) {
-                const numeric = Number(rawId);
-                if (Number.isFinite(numeric) && CAPTAINS_BASE.some(c => c.id === numeric)) {
-                    return numeric;
-                }
-                const str = String(rawId).trim().toLowerCase();
-                const byIdStr = CAPTAINS_BASE.find(c => String(c.id) === str);
-                if (byIdStr) return byIdStr.id;
-            }
-
-            const rawName = String(item?.name || item?.captainName || '').trim().toLowerCase();
-            if (rawName) {
-                const byName = CAPTAINS_BASE.find(c =>
-                    c.name.toLowerCase() === rawName ||
-                    c.name.toLowerCase().includes(rawName) ||
-                    rawName.includes(c.name.replace('كابتن الاستلام', '').trim().toLowerCase())
-                );
-                if (byName) return byName.id;
-            }
-
-            return null;
-        }
-
-        function extractCaptainsFromRecord(record) {
-            const entries = [];
-            if (!record || typeof record !== 'object') return entries;
-
-            const container = (record.captains && typeof record.captains === 'object')
-                ? record.captains
-                : (record.drivers && typeof record.drivers === 'object')
-                    ? record.drivers
-                    : record;
-
-            if (Array.isArray(container)) {
-                container.forEach((item, idx) => {
-                    if (item && typeof item === 'object') entries.push({ key: item.id ?? idx, item });
-                });
-            } else if (container && typeof container === 'object') {
-                Object.entries(container).forEach(([key, item]) => {
-                    if (key === 'updatedAt' || key === 'lastUpdated') return;
-                    if (item && typeof item === 'object') entries.push({ key, item });
-                });
-            }
-
-            return entries;
-        }
 
         function loadInitialState() {
             CAPTAINS_BASE.forEach(base => {
@@ -275,88 +195,54 @@
                     if (raw) saved = JSON.parse(raw);
                 } catch (e) {}
 
-                const coords = normalizeCoords(saved?.lat, saved?.lng, base.lat, base.lng);
-                const lastMs = parseTimestampMs(saved?.lastUpdated || saved?.updatedAt || saved?.timestamp);
-                const awayMs = parseTimestampMs(saved?.awaySince);
-
                 captainsState[base.id] = {
                     id: base.id,
                     name: base.name,
-                    lat: coords.lat,
-                    lng: coords.lng,
-                    speed: Number(saved?.speed ?? 0) || 0,
-                    accuracy: Number(saved?.accuracy ?? 10) || 10,
+                    lat: Number(saved?.lat ?? base.lat),
+                    lng: Number(saved?.lng ?? base.lng),
+                    speed: Number(saved?.speed ?? 0),
+                    accuracy: Number(saved?.accuracy ?? 10),
                     status: saved?.status || 'offline',
-                    remainingOrders: Number(saved?.remainingOrders ?? saved?.remaining ?? base.remaining) || 0,
-                    deliveredOrders: Number(saved?.deliveredOrders ?? saved?.delivered ?? base.delivered) || 0,
+                    remainingOrders: Number(saved?.remainingOrders ?? base.remaining),
+                    deliveredOrders: Number(saved?.deliveredOrders ?? base.delivered),
                     isLive: Boolean(saved?.isLive),
                     leftPage: Boolean(saved?.leftPage),
-                    awaySince: awayMs ? new Date(awayMs).toISOString() : null,
-                    lastUpdated: lastMs ? new Date(lastMs).toISOString() : null
+                    awaySince: saved?.awaySince || null,
+                    lastUpdated: saved?.lastUpdated || null
                 };
             });
         }
 
-        function ingestPayload(payload, fallbackKey = null) {
-            if (!payload || typeof payload !== 'object') return;
-            const capId = matchCaptainId(payload, fallbackKey);
-            if (!capId) return;
+        function ingestPayload(payload) {
+            if (!payload || !payload.id) return;
+            const prev = captainsState[payload.id] || {};
+            const nextTime = payload.lastUpdated ? new Date(payload.lastUpdated).getTime() : 0;
+            const prevTime = prev.lastUpdated ? new Date(prev.lastUpdated).getTime() : 0;
 
-            const base = CAPTAINS_BASE.find(c => c.id === capId);
-            const prev = captainsState[capId] || {};
-
-            const incomingMs = parseTimestampMs(
-                payload.lastUpdated || payload.updatedAt || payload.timestamp || payload.time
-            );
-            const prevMs = parseTimestampMs(prev.lastUpdated);
-
-            // إذا كان هناك وقت أحدث محفوظ بالفعل، لا نستبدله ببيانات أقدم، إلا إذا لم يكن هناك وقت محفوظ
-            if (prevMs > 0 && incomingMs > 0 && incomingMs < prevMs) {
+            if (prevTime > 0 && nextTime > 0 && nextTime < prevTime) {
                 return;
             }
 
-            const coords = normalizeCoords(
-                payload.lat ?? payload.latitude,
-                payload.lng ?? payload.longitude ?? payload.lon,
-                prev.lat ?? base.lat,
-                prev.lng ?? base.lng
-            );
+            const nextLat = Number(payload.lat ?? prev.lat);
+            const nextLng = Number(payload.lng ?? prev.lng);
 
-            const hasLeftPage = payload.leftPage !== undefined
-                ? Boolean(payload.leftPage)
-                : (payload.isAway !== undefined ? Boolean(payload.isAway) : Boolean(prev.leftPage));
-
-            const hasIsLive = payload.isLive !== undefined
-                ? Boolean(payload.isLive)
-                : (payload.active !== undefined ? Boolean(payload.active) : (!hasLeftPage && payload.status !== 'offline' && incomingMs > 0));
-
-            const effectiveLastMs = incomingMs > 0 ? incomingMs : (prevMs > 0 ? prevMs : 0);
-            const awayMs = hasLeftPage
-                ? (parseTimestampMs(payload.awaySince) || parseTimestampMs(prev.awaySince) || effectiveLastMs || Date.now())
-                : 0;
-
-            const rawSpeed = Number(payload.speed ?? prev.speed ?? 0);
-            const speed = Number.isFinite(rawSpeed) && rawSpeed >= 0 ? Math.round(rawSpeed) : 0;
-
-            captainsState[capId] = {
+            captainsState[payload.id] = {
                 ...prev,
-                id: capId,
-                name: base.name,
-                lat: coords.lat,
-                lng: coords.lng,
-                speed: payload.status === 'stopped' || payload.status === 'offline' ? 0 : speed,
-                accuracy: Number(payload.accuracy ?? prev.accuracy ?? 10) || 10,
-                status: payload.status || (hasIsLive ? 'active' : (prev.status || 'offline')),
-                remainingOrders: Number(payload.remainingOrders ?? payload.remaining ?? prev.remainingOrders ?? base.remaining) || 0,
-                deliveredOrders: Number(payload.deliveredOrders ?? payload.delivered ?? prev.deliveredOrders ?? base.delivered) || 0,
-                isLive: hasIsLive && !hasLeftPage,
-                leftPage: hasLeftPage,
-                awaySince: hasLeftPage && awayMs > 0 ? new Date(awayMs).toISOString() : null,
-                lastUpdated: effectiveLastMs > 0 ? new Date(effectiveLastMs).toISOString() : null
+                ...payload,
+                lat: Number.isFinite(nextLat) ? nextLat : prev.lat,
+                lng: Number.isFinite(nextLng) ? nextLng : prev.lng,
+                speed: Number(payload.speed ?? 0),
+                accuracy: Number(payload.accuracy ?? prev.accuracy ?? 10),
+                remainingOrders: Number(payload.remainingOrders ?? prev.remainingOrders ?? 0),
+                deliveredOrders: Number(payload.deliveredOrders ?? prev.deliveredOrders ?? 0),
+                isLive: Boolean(payload.isLive),
+                leftPage: Boolean(payload.leftPage),
+                awaySince: payload.awaySince ?? (payload.leftPage ? (prev.awaySince || payload.lastUpdated || new Date().toISOString()) : null),
+                lastUpdated: payload.lastUpdated || prev.lastUpdated || new Date().toISOString()
             };
 
             try {
-                localStorage.setItem(`waseet_self_captain_${capId}`, JSON.stringify(captainsState[capId]));
+                localStorage.setItem(`waseet_self_captain_${payload.id}`, JSON.stringify(captainsState[payload.id]));
             } catch (e) {}
 
             renderDashboard();
@@ -366,18 +252,19 @@
             if (!BIN_CFG.binId || isPollingJsonBin) return;
             isPollingJsonBin = true;
             try {
-                const cacheBust = `t=${Date.now()}`;
-                const url = `https://api.jsonbin.io/v3/b/${encodeURIComponent(BIN_CFG.binId)}/latest?meta=false&${cacheBust}`;
+                const url = `https://api.jsonbin.io/v3/b/${encodeURIComponent(BIN_CFG.binId)}/latest`;
                 const res = await fetch(url, {
                     method: 'GET',
-                    cache: 'no-store',
                     headers: BIN_CFG.masterKey ? { 'X-Master-Key': BIN_CFG.masterKey } : {}
                 });
                 if (!res.ok) return;
                 const data = await res.json();
-                const record = (data && data.record && typeof data.record === 'object') ? data.record : data;
-                const entries = extractCaptainsFromRecord(record);
-                entries.forEach(({ key, item }) => ingestPayload(item, key));
+                const captainsObj = data && data.record && data.record.captains;
+                if (captainsObj && typeof captainsObj === 'object') {
+                    Object.values(captainsObj).forEach(item => {
+                        if (item && item.id) ingestPayload(item);
+                    });
+                }
             } catch (e) {}
             finally {
                 isPollingJsonBin = false;
@@ -386,11 +273,11 @@
 
         function evaluateCaptainHealth(cap) {
             const nowMs = Date.now();
-            const lastMs = parseTimestampMs(cap.lastUpdated);
+            const lastMs = cap.lastUpdated ? new Date(cap.lastUpdated).getTime() : 0;
             const ageSec = lastMs ? Math.max(0, Math.floor((nowMs - lastMs) / 1000)) : null;
 
             if (cap.leftPage) {
-                const awayMs = parseTimestampMs(cap.awaySince) || lastMs;
+                const awayMs = cap.awaySince ? new Date(cap.awaySince).getTime() : lastMs;
                 const awaySec = awayMs ? Math.max(0, Math.floor((nowMs - awayMs) / 1000)) : 0;
                 return {
                     code: 'left_page',
@@ -414,14 +301,10 @@
                 };
             }
 
-            const activityText = cap.status === 'stopped'
-                ? `متوقف • تحديث منذ ${formatDuration(ageSec)}`
-                : `تحديث منذ ${formatDuration(ageSec)} • ${cap.speed} كم/س`;
-
             return {
                 code: 'live',
-                label: cap.status === 'stopped' ? 'متوقف' : 'يبث مباشر',
-                detail: activityText,
+                label: 'يبث مباشر',
+                detail: `تحديث منذ ${formatDuration(ageSec)} • ${cap.speed} كم/س`,
                 badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
                 pinClass: 'pin-live',
                 isAlert: false
@@ -479,9 +362,6 @@
                         iconSize: [34, 34],
                         iconAnchor: [17, 17]
                     }));
-                    markers[cap.id].setPopupContent(
-                        `<strong>${cap.name}</strong><br>${health.label} — ${health.detail}<br><span style="font-size:11px;direction:ltr;display:inline-block">${Number(cap.lat).toFixed(5)}, ${Number(cap.lng).toFixed(5)}</span>`
-                    );
                 }
 
                 const showItem =
@@ -500,7 +380,6 @@
                         <div class="min-w-0">
                             <div class="text-xs font-extrabold text-white truncate">${cap.id}. ${cap.name}</div>
                             <div class="text-[11px] text-slate-400 truncate mt-0.5">${health.detail}</div>
-                            <div class="text-[10px] font-mono text-slate-500 mt-0.5" dir="ltr">${Number(cap.lat).toFixed(5)}, ${Number(cap.lng).toFixed(5)}</div>
                         </div>
                         <div class="flex flex-col items-end shrink-0 gap-1">
                             <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold border ${health.badgeClass}">${health.label}</span>
@@ -576,8 +455,8 @@
 
             renderDashboard();
             pollJsonBin();
-            setInterval(pollJsonBin, 3000);
-            setInterval(renderDashboard, 3000);
+            setInterval(pollJsonBin, 4000);
+            setInterval(renderDashboard, 5000);
         }
 
         window.addEventListener('DOMContentLoaded', initMonitoring);
