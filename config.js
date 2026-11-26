@@ -1,4 +1,4 @@
-// الإعداد الوحيد: الصق رابط Apps Script (ينتهي بـ /exec) مكان النص أدناه
+⅘// الإعداد الوحيد: الصق رابط Apps Script (ينتهي بـ /exec) مكان النص أدناه
 const CONFIG = {
   ENDPOINT: "https://script.google.com/macros/s/AKfycbw2q1dsSQvV6OJqACOEf6N8VDHsiZY3MzMyaa17pkT6tIfc4IwyvYrpmBIuTptkFgPoAQ/exec",
   KEY: "mosul-2026",          // نفس KEY في Code.gs
@@ -26,4 +26,10 @@ const CONFIG = {
     { id: 16, name: "مندوب 16 — الكرامة" },
     { id: 17, name: "مندوب 17 — 17 تموز" }
   ]
+};
+// إعدادات الربط السحابي الجديدة
+window.APP_CONFIG = {
+    ENDPOINT: '',
+    JSONBIN_BIN_ID: 'https:6b079d13ab3a7b614481814e',
+    JSONBIN_MASTER_KEY: '$2a$10$qOS1lm7Vo1tq9r.w/vTMoOnHrSJ7MKisq.6csaRUyFQ/7vRaV4PfS'
 };
